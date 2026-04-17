@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
+import { getOpponentForMatchday } from "@/lib/league";
 
 export default function FixturesScreen() {
   const colors = useColors();
@@ -25,10 +26,17 @@ export default function FixturesScreen() {
   const teamRating = (() => {
     const ps = state.lineup
       .map((id) => state.players.find((p) => p.id === id))
-      .filter(Boolean);
+      .filter((p): p is NonNullable<typeof p> => Boolean(p));
     if (ps.length === 0) return 0;
     return Math.round(ps.reduce((s, p) => s + (p?.rating ?? 0), 0) / ps.length);
   })();
+
+  const opp = getOpponentForMatchday(state.season);
+  const playerSchedule = state.season.schedule.filter(
+    (f) => f.homeId === "player" || f.awayId === "player",
+  );
+  const upcomingPlayer = playerSchedule.filter((f) => !f.played).slice(0, 5);
+  const playedPlayer = playerSchedule.filter((f) => f.played).slice(-5).reverse();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -41,53 +49,84 @@ export default function FixturesScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.title, { color: colors.foreground }]}>Fixtures</Text>
-
-        {/* Upcoming */}
-        <Text style={[styles.section, { color: colors.mutedForeground }]}>
-          UPCOMING
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          Season {state.season.number} • Matchday {Math.min(state.season.matchday, state.season.totalMatchdays)} / {state.season.totalMatchdays}
         </Text>
-        <View
-          style={[
-            styles.upcomingCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View style={styles.upcomingRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
-                Friendly
-              </Text>
-              <Text style={[styles.opponentName, { color: colors.foreground }]}>
-                {state.upcomingOpponent.name}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 12, marginTop: 6 }}>
-                <View style={styles.ratingChip}>
-                  <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
-                    YOU {teamRating}
-                  </Text>
-                </View>
-                <View style={styles.ratingChip}>
-                  <Text style={{ color: colors.destructive, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
-                    OPP {state.upcomingOpponent.rating}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            <Pressable
-              onPress={() => router.push("/match")}
-              style={({ pressed }) => [
-                styles.playBtn,
-                { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+
+        {/* Next match (player) */}
+        {opp && !state.season.finished && (
+          <>
+            <Text style={[styles.section, { color: colors.mutedForeground }]}>NEXT MATCH</Text>
+            <View
+              style={[
+                styles.upcomingCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
-              <Feather name="play" size={18} color={colors.primaryForeground} />
-            </Pressable>
-          </View>
-        </View>
+              <View style={styles.upcomingRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
+                    {opp.isHome ? "HOME" : "AWAY"} • Matchday {state.season.matchday}
+                  </Text>
+                  <Text style={[styles.opponentName, { color: colors.foreground }]}>
+                    {opp.name}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                    <View style={styles.ratingChip}>
+                      <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+                        YOU {teamRating}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingChip}>
+                      <Text style={{ color: colors.destructive, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+                        OPP {opp.rating}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => router.push("/match")}
+                  style={({ pressed }) => [
+                    styles.playBtn,
+                    { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+                  ]}
+                >
+                  <Feather name="play" size={20} color={colors.primaryForeground} />
+                </Pressable>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* Schedule */}
+        {upcomingPlayer.length > 0 && (
+          <>
+            <Text style={[styles.section, { color: colors.mutedForeground }]}>UPCOMING SCHEDULE</Text>
+            <View style={[styles.scheduleCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {upcomingPlayer.map((f) => {
+                const isHome = f.homeId === "player";
+                const oppId = isHome ? f.awayId : f.homeId;
+                const oppClub = state.season.clubs.find((c) => c.id === oppId);
+                return (
+                  <View key={`u-${f.matchday}`} style={[styles.scheduleRow, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.mdNum, { color: colors.mutedForeground }]}>MD{f.matchday}</Text>
+                    <View style={[styles.haTag, { backgroundColor: isHome ? colors.primary + "33" : "rgba(255,255,255,0.1)" }]}>
+                      <Text style={{ color: isHome ? colors.primary : colors.mutedForeground, fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                        {isHome ? "H" : "A"}
+                      </Text>
+                    </View>
+                    <Text style={[styles.opp, { color: colors.foreground }]}>{oppClub?.name}</Text>
+                    <Text style={[styles.oppRating, { color: colors.mutedForeground }]}>{oppClub?.rating}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Past results */}
         <Text style={[styles.section, { color: colors.mutedForeground, marginTop: 18 }]}>
-          RESULTS
+          RECENT RESULTS
         </Text>
         {state.results.length === 0 ? (
           <View style={[styles.emptyCard, { borderColor: colors.border }]}>
@@ -97,7 +136,7 @@ export default function FixturesScreen() {
             </Text>
           </View>
         ) : (
-          state.results.map((r) => {
+          state.results.slice(0, 8).map((r) => {
             const win = r.homeScore > r.awayScore;
             const draw = r.homeScore === r.awayScore;
             const tag = win ? "W" : draw ? "D" : "L";
@@ -122,7 +161,7 @@ export default function FixturesScreen() {
                     vs {r.opponent}
                   </Text>
                   <Text style={[styles.resultMeta, { color: colors.mutedForeground }]}>
-                    {new Date(r.playedAt).toLocaleDateString()} • +{r.rewards.coins} coins
+                    {r.matchday ? `MD${r.matchday} • ` : ""}+{r.rewards.coins} coins
                   </Text>
                 </View>
                 <Text style={[styles.resultScore, { color: colors.foreground }]}>
@@ -139,7 +178,8 @@ export default function FixturesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  title: { fontSize: 26, fontWeight: "800", fontFamily: "Inter_700Bold" },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  subtitle: { fontSize: 12, marginTop: 2, fontFamily: "Inter_500Medium" },
   section: {
     fontSize: 11,
     letterSpacing: 1,
@@ -158,7 +198,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     fontFamily: "Inter_600SemiBold",
   },
-  opponentName: { fontSize: 18, fontWeight: "800", marginTop: 2, fontFamily: "Inter_700Bold" },
+  opponentName: { fontSize: 18, marginTop: 2, fontFamily: "Inter_700Bold" },
   ratingChip: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -172,6 +212,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  scheduleCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  scheduleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 10,
+  },
+  mdNum: { fontSize: 11, fontFamily: "Inter_700Bold", width: 38 },
+  haTag: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  opp: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  oppRating: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   emptyCard: {
     borderWidth: 1,
     borderStyle: "dashed",
@@ -198,7 +257,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   resultTagText: { color: "#0A0E1A", fontWeight: "800", fontFamily: "Inter_700Bold" },
-  resultOpp: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_600SemiBold" },
+  resultOpp: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   resultMeta: { fontSize: 11, marginTop: 2, fontFamily: "Inter_400Regular" },
-  resultScore: { fontSize: 18, fontWeight: "800", fontFamily: "Inter_700Bold" },
+  resultScore: { fontSize: 18, fontFamily: "Inter_700Bold" },
 });

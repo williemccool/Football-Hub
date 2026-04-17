@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import React from "react";
+import { router } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -18,6 +19,8 @@ export default function ClubScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { state, reset } = useGame();
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top + 8;
   const bottomPad = (Platform.OS === "web" ? 100 : insets.bottom) + 84;
@@ -27,6 +30,18 @@ export default function ClubScreen() {
   const losses = state.results.filter((r) => r.homeScore < r.awayScore).length;
   const goalsFor = state.results.reduce((s, r) => s + r.homeScore, 0);
   const goalsAgainst = state.results.reduce((s, r) => s + r.awayScore, 0);
+
+  const handleCrestTap = () => {
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    const next = tapCount + 1;
+    setTapCount(next);
+    if (next >= 5) {
+      setTapCount(0);
+      router.push("/admin");
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => setTapCount(0), 800);
+  };
 
   const handleReset = () => {
     if (Platform.OS === "web") {
@@ -53,6 +68,7 @@ export default function ClubScreen() {
           paddingBottom: bottomPad,
           paddingHorizontal: 16,
         }}
+        showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.title, { color: colors.foreground }]}>Club</Text>
 
@@ -62,17 +78,29 @@ export default function ClubScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <View
-            style={[styles.crest, { backgroundColor: colors.primary }]}
-          >
+          <Pressable onPress={handleCrestTap} style={[styles.crest, { backgroundColor: colors.primary }]}>
             <Feather name="zap" size={32} color={colors.primaryForeground} />
-          </View>
+          </Pressable>
           <Text style={[styles.clubName, { color: colors.foreground }]}>
             {state.clubName}
           </Text>
           <Text style={[styles.managerLine, { color: colors.mutedForeground }]}>
             {state.manager} • Level {state.managerLevel}
           </Text>
+          <View style={styles.trophyRow}>
+            <View style={[styles.trophyBadge, { backgroundColor: "rgba(255,214,10,0.15)" }]}>
+              <Feather name="award" size={12} color={colors.accent} />
+              <Text style={[styles.trophyText, { color: colors.accent }]}>
+                {state.championships} championships
+              </Text>
+            </View>
+            <View style={[styles.trophyBadge, { backgroundColor: "rgba(0,255,136,0.12)" }]}>
+              <Feather name="trending-up" size={12} color={colors.primary} />
+              <Text style={[styles.trophyText, { color: colors.primary }]}>
+                Season {state.season.number}
+              </Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.statsGrid}>
@@ -100,6 +128,18 @@ export default function ClubScreen() {
           <InvRow icon="flame" label="Trait Fragments" value={state.traitFragments} color="#B36BFF" />
           <InvRow icon="aperture" label="Catalysts" value={state.catalysts} color="#FF8A3D" />
           <InvRow icon="droplet" label="Essence" value={state.essence} color="#41D7FF" />
+          <InvRow icon="smile" label="Morale" value={state.morale} color="#FF8AC2" />
+        </View>
+
+        <Text style={[styles.section, { color: colors.mutedForeground }]}>SLASH RECORDS</Text>
+        <View
+          style={[
+            styles.invCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <InvRow icon="target" label="Best Slash Score" value={state.bestSlashScore} color={colors.primary} />
+          <InvRow icon="play-circle" label="Total Slash Runs" value={state.totalSlashRuns} color={colors.accent} />
         </View>
 
         <Pressable
@@ -114,6 +154,10 @@ export default function ClubScreen() {
             Reset progress
           </Text>
         </Pressable>
+
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          Tip: Tap the crest 5 times to access dev tuning.
+        </Text>
       </ScrollView>
     </View>
   );
@@ -161,7 +205,7 @@ function InvRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  title: { fontSize: 26, fontWeight: "800", fontFamily: "Inter_700Bold" },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   heroCard: {
     marginTop: 14,
     padding: 20,
@@ -177,8 +221,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 10,
   },
-  clubName: { fontSize: 20, fontWeight: "800", fontFamily: "Inter_700Bold" },
+  clubName: { fontSize: 20, fontFamily: "Inter_700Bold" },
   managerLine: { fontSize: 12, marginTop: 2, fontFamily: "Inter_500Medium" },
+  trophyRow: { flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" },
+  trophyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  trophyText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   statsGrid: { flexDirection: "row", gap: 8, marginTop: 8 },
   statBox: {
     flex: 1,
@@ -187,7 +241,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
   },
-  statBoxValue: { fontSize: 22, fontWeight: "800", fontFamily: "Inter_700Bold" },
+  statBoxValue: { fontSize: 22, fontFamily: "Inter_700Bold" },
   statBoxLabel: {
     fontSize: 10,
     letterSpacing: 0.6,
@@ -218,7 +272,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   invLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
-  invValue: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_600SemiBold" },
+  invValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   resetBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -230,4 +284,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   resetText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  hint: { fontSize: 10, textAlign: "center", marginTop: 12, fontFamily: "Inter_400Regular", opacity: 0.6 },
 });

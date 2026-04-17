@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HudPill } from "@/components/HudPill";
 import { useColors } from "@/hooks/useColors";
 import { useGame } from "@/context/GameContext";
+import { getOpponentForMatchday } from "@/lib/league";
 
 function formatMs(ms: number) {
   if (ms <= 0) return "Ready";
@@ -26,8 +27,8 @@ function formatMs(ms: number) {
 export default function HubScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { state, msUntilNextTicket } = useGame();
-  const [tick, setTick] = useState(0);
+  const { state, msUntilNextTicket, claimMission } = useGame();
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const i = setInterval(() => setTick((t) => t + 1), 1000);
@@ -42,13 +43,15 @@ export default function HubScreen() {
   const bottomPad = (Platform.OS === "web" ? 100 : insets.bottom) + 84;
 
   const lineupCount = state.lineup.filter(Boolean).length;
-  const teamRating = (() => {
-    const ps = state.lineup
-      .map((id) => state.players.find((p) => p.id === id))
-      .filter(Boolean);
-    if (ps.length === 0) return 0;
-    return Math.round(ps.reduce((s, p) => s + (p?.rating ?? 0), 0) / ps.length);
-  })();
+  const lineupPlayers = state.lineup
+    .map((id) => state.players.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+  const teamRating =
+    lineupPlayers.length === 0
+      ? 0
+      : Math.round(lineupPlayers.reduce((s, p) => s + p.rating, 0) / lineupPlayers.length);
+  const injuredCount = state.players.filter((p) => p.injuredMatches > 0).length;
+  const opp = getOpponentForMatchday(state.season);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -67,7 +70,7 @@ export default function HubScreen() {
               {state.clubName}
             </Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Manager Lv {state.managerLevel} • {state.manager}
+              Manager Lv {state.managerLevel} • S{state.season.number} • MD{Math.min(state.season.matchday, state.season.totalMatchdays)}
             </Text>
           </View>
           <View style={styles.hudRow}>
@@ -93,6 +96,36 @@ export default function HubScreen() {
         <Text style={[styles.xpText, { color: colors.mutedForeground }]}>
           {state.managerXp} / {xpForNext} XP
         </Text>
+
+        {/* Morale + condition strip */}
+        <View style={styles.moraleRow}>
+          <View style={[styles.moralePill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="smile" size={12} color={state.morale >= 65 ? colors.primary : state.morale >= 40 ? colors.accent : colors.destructive} />
+            <Text style={[styles.moraleLabel, { color: colors.mutedForeground }]}>MORALE</Text>
+            <Text style={[styles.moraleVal, { color: colors.foreground }]}>{state.morale}</Text>
+          </View>
+          {injuredCount > 0 && (
+            <View style={[styles.moralePill, { backgroundColor: colors.card, borderColor: colors.destructive }]}>
+              <Feather name="alert-triangle" size={12} color={colors.destructive} />
+              <Text style={[styles.moraleLabel, { color: colors.mutedForeground }]}>INJURED</Text>
+              <Text style={[styles.moraleVal, { color: colors.destructive }]}>{injuredCount}</Text>
+            </View>
+          )}
+          {state.injuryShield && (
+            <View style={[styles.moralePill, { backgroundColor: colors.card, borderColor: "#A0F0FF" }]}>
+              <Feather name="shield" size={12} color="#A0F0FF" />
+              <Text style={[styles.moraleLabel, { color: colors.mutedForeground }]}>SHIELD</Text>
+              <Text style={[styles.moraleVal, { color: "#A0F0FF" }]}>1</Text>
+            </View>
+          )}
+          {state.scoutIntelRole && (
+            <View style={[styles.moralePill, { backgroundColor: colors.card, borderColor: "#5BFFEA" }]}>
+              <Feather name="eye" size={12} color="#5BFFEA" />
+              <Text style={[styles.moraleLabel, { color: colors.mutedForeground }]}>INTEL</Text>
+              <Text style={[styles.moraleVal, { color: "#5BFFEA" }]}>{state.scoutIntelRole}</Text>
+            </View>
+          )}
+        </View>
 
         {/* Slash CTA */}
         <Pressable
@@ -149,9 +182,9 @@ export default function HubScreen() {
             sub={state.formation}
           />
           <QuickStat
-            label="Trait Frags"
-            value={`${state.traitFragments}`}
-            sub={`Catalysts ${state.catalysts}`}
+            label="Best Slash"
+            value={`${state.bestSlashScore}`}
+            sub={`${state.totalSlashRuns} runs`}
           />
         </View>
 
@@ -177,23 +210,26 @@ export default function HubScreen() {
                 {teamRating} OVR
               </Text>
             </View>
-            <Text style={[styles.fixtureVs, { color: colors.mutedForeground }]}>vs</Text>
+            <Text style={[styles.fixtureVs, { color: colors.mutedForeground }]}>
+              {opp?.isHome === false ? "@" : "vs"}
+            </Text>
             <View style={[styles.fixtureSide, { alignItems: "flex-end" }]}>
               <Text style={[styles.fixtureClub, { color: colors.foreground }]}>
-                {state.upcomingOpponent.name}
+                {opp?.name ?? state.upcomingOpponent.name}
               </Text>
               <Text style={[styles.fixtureRating, { color: colors.destructive }]}>
-                {state.upcomingOpponent.rating} OVR
+                {opp?.rating ?? state.upcomingOpponent.rating} OVR
               </Text>
             </View>
           </View>
           <Pressable
             onPress={() => router.push("/match")}
+            disabled={state.season.finished}
             style={({ pressed }) => [
               styles.playButton,
               {
                 backgroundColor: colors.primary,
-                opacity: pressed ? 0.85 : 1,
+                opacity: state.season.finished ? 0.5 : pressed ? 0.85 : 1,
               },
             ]}
           >
@@ -201,7 +237,7 @@ export default function HubScreen() {
             <Text
               style={[styles.playButtonText, { color: colors.primaryForeground }]}
             >
-              Play match
+              {state.season.finished ? "Season finished" : "Play matchday"}
             </Text>
           </Pressable>
         </View>
@@ -241,8 +277,20 @@ export default function HubScreen() {
                 </View>
               </View>
               <View style={styles.missionRewardCol}>
-                {m.done ? (
+                {m.claimed ? (
                   <Feather name="check-circle" size={18} color={colors.primary} />
+                ) : m.done ? (
+                  <Pressable
+                    onPress={() => claimMission(m.id)}
+                    style={({ pressed }) => [
+                      styles.claimBtn,
+                      { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+                    ]}
+                  >
+                    <Text style={[styles.claimBtnText, { color: colors.primaryForeground }]}>
+                      +{m.reward}
+                    </Text>
+                  </Pressable>
                 ) : (
                   <View style={styles.missionRewardPill}>
                     <Feather name="dollar-sign" size={11} color={colors.accent} />
@@ -285,13 +333,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  clubName: { fontSize: 22, fontWeight: "800", fontFamily: "Inter_700Bold" },
+  clubName: { fontSize: 22, fontFamily: "Inter_700Bold" },
   subtitle: { fontSize: 12, marginTop: 2, fontFamily: "Inter_500Medium" },
   hudRow: { flexDirection: "row", gap: 6 },
   xpBar: { height: 6, borderRadius: 4, overflow: "hidden" },
   xpText: { fontSize: 10, marginTop: 4, fontFamily: "Inter_500Medium" },
+  moraleRow: { flexDirection: "row", gap: 6, marginTop: 10, flexWrap: "wrap" },
+  moralePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  moraleLabel: { fontSize: 9, letterSpacing: 0.6, fontFamily: "Inter_600SemiBold" },
+  moraleVal: { fontSize: 12, fontFamily: "Inter_700Bold" },
   slashCard: {
-    marginTop: 18,
+    marginTop: 14,
     borderRadius: 22,
     overflow: "hidden",
     shadowColor: "#00FF88",
@@ -300,10 +360,7 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 10,
   },
-  slashGradient: {
-    padding: 22,
-    minHeight: 200,
-  },
+  slashGradient: { padding: 22, minHeight: 200 },
   slashTop: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -312,7 +369,6 @@ const styles = StyleSheet.create({
   slashLabel: {
     fontSize: 11,
     color: "#0A0E1A",
-    fontWeight: "700",
     letterSpacing: 1.5,
     fontFamily: "Inter_700Bold",
   },
@@ -327,13 +383,11 @@ const styles = StyleSheet.create({
   },
   ticketBadgeText: {
     color: "#FFD60A",
-    fontWeight: "700",
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
   slashTitle: {
     fontSize: 64,
-    fontWeight: "900",
     color: "#0A0E1A",
     letterSpacing: -2,
     marginTop: 16,
@@ -354,7 +408,6 @@ const styles = StyleSheet.create({
   },
   slashFooterText: {
     color: "#0A0E1A",
-    fontWeight: "700",
     fontFamily: "Inter_600SemiBold",
     fontSize: 13,
   },
@@ -373,7 +426,6 @@ const styles = StyleSheet.create({
   },
   quickValue: {
     fontSize: 20,
-    fontWeight: "800",
     marginTop: 2,
     fontFamily: "Inter_700Bold",
   },
@@ -392,7 +444,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: "700",
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.4,
     textTransform: "uppercase",
@@ -403,11 +454,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   fixtureSide: { flex: 1 },
-  fixtureClub: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_600SemiBold" },
+  fixtureClub: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   fixtureRating: { fontSize: 12, marginTop: 2, fontFamily: "Inter_600SemiBold" },
   fixtureVs: {
     fontSize: 12,
-    fontWeight: "600",
     marginHorizontal: 8,
     fontFamily: "Inter_500Medium",
   },
@@ -422,13 +472,12 @@ const styles = StyleSheet.create({
   },
   playButtonText: {
     fontSize: 14,
-    fontWeight: "700",
     fontFamily: "Inter_600SemiBold",
   },
   missionRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, gap: 10 },
   missionText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   missionBar: { height: 5, borderRadius: 4, overflow: "hidden", marginTop: 6 },
-  missionRewardCol: { width: 56, alignItems: "flex-end" },
+  missionRewardCol: { width: 64, alignItems: "flex-end" },
   missionRewardPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -437,5 +486,11 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
-  missionRewardText: { fontSize: 11, fontWeight: "700", fontFamily: "Inter_600SemiBold" },
+  missionRewardText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  claimBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  claimBtnText: { fontSize: 11, fontFamily: "Inter_700Bold" },
 });

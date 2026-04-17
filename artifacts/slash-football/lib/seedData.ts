@@ -1,4 +1,5 @@
-import type { GameState, Player, Rarity, Role } from "./types";
+import { createSeason } from "./league";
+import type { GameState, Player, Rarity, Role, TuningConfig } from "./types";
 
 const FIRST_NAMES = [
   "Luca", "Marco", "Diego", "Kai", "Noah", "Theo", "Jude", "Rio", "Eden",
@@ -53,7 +54,6 @@ export function makePlayer(role: Role, ratingMin: number, ratingMax: number): Pl
     defense: rating + Math.floor(Math.random() * 8) - 4,
     physical: rating + Math.floor(Math.random() * 8) - 4,
   };
-  // Role-bias
   if (role === "ST" || role === "WG") baseStats.shooting += 4;
   if (role === "CB" || role === "FB") baseStats.defense += 5;
   if (role === "GK") {
@@ -82,6 +82,8 @@ export function makePlayer(role: Role, ratingMin: number, ratingMax: number): Pl
     shards: 0,
     shardsToNext: 8,
     trait: null,
+    condition: 100,
+    injuredMatches: 0,
     stats: baseStats,
   };
 }
@@ -89,6 +91,23 @@ export function makePlayer(role: Role, ratingMin: number, ratingMax: number): Pl
 const STARTER_FORMATION_4_3_3: Role[] = [
   "GK", "FB", "CB", "CB", "FB", "DM", "CM", "AM", "WG", "ST", "WG",
 ];
+
+export function defaultTuning(): TuningConfig {
+  return {
+    ticketCap: 5,
+    ticketRefillMs: 90 * 60 * 1000,
+    spawnDensity: 1.0,
+    hazardChance: 1.0,
+    injuryChance: 0.5,
+    moraleHitValue: 8,
+    shardsToFirstUpgrade: 8,
+    duplicateCoinValue: 60,
+    matchCoinWin: 200,
+    matchCoinDraw: 100,
+    leagueSize: 8,
+    seasonChampionReward: 1500,
+  };
+}
 
 export function createInitialState(): GameState {
   idCounter = 1;
@@ -102,26 +121,31 @@ export function createInitialState(): GameState {
     makePlayer("WG", 64, 70),
     makePlayer("ST", 65, 71),
   ];
-  // Give one star
   const star = makePlayer("AM", 76, 79);
   star.trait = pick(TRAITS);
   startingEleven[7] = star;
 
   const players = [...startingEleven, ...bench];
+  const tuning = defaultTuning();
+  const season = createSeason("FC Slash", tuning.leagueSize, 1);
 
   return {
     manager: "Coach",
     clubName: "FC Slash",
     managerLevel: 1,
     managerXp: 0,
+    seasonXp: 0,
     coins: 250,
     essence: 0,
     traitFragments: 2,
     catalysts: 0,
-    tickets: 5,
-    maxTickets: 5,
+    morale: 70,
+    injuryShield: false,
+    scoutIntelRole: null,
+    tickets: tuning.ticketCap,
+    maxTickets: tuning.ticketCap,
     lastTicketRefill: Date.now(),
-    ticketRefillMs: 90 * 60 * 1000,
+    ticketRefillMs: tuning.ticketRefillMs,
     players,
     lineup: startingEleven.map((p) => p.id),
     formation: "4-3-3",
@@ -131,10 +155,16 @@ export function createInitialState(): GameState {
     results: [],
     upcomingOpponent: pickOpponent(),
     dailyMissions: [
-      { id: "m1", text: "Complete 3 scout runs", progress: 0, target: 3, reward: 100, done: false },
-      { id: "m2", text: "Score 1500+ in a slash run", progress: 0, target: 1500, reward: 75, done: false },
-      { id: "m3", text: "Play 1 fixture", progress: 0, target: 1, reward: 150, done: false },
+      { id: "m1", text: "Complete 3 scout runs", progress: 0, target: 3, reward: 100, done: false, claimed: false },
+      { id: "m2", text: "Score 1500+ in a slash run", progress: 0, target: 1500, reward: 75, done: false, claimed: false },
+      { id: "m3", text: "Play 1 fixture", progress: 0, target: 1, reward: 150, done: false, claimed: false },
+      { id: "m4", text: "Hit a 6+ combo", progress: 0, target: 6, reward: 60, done: false, claimed: false },
     ],
+    season,
+    tuning,
+    bestSlashScore: 0,
+    totalSlashRuns: 0,
+    championships: 0,
   };
 }
 

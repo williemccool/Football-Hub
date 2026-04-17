@@ -1,0 +1,261 @@
+We already have a working native React Native + Expo prototype for Slash Football. Do NOT rebuild the app from scratch. Extend and improve the current codebase.
+
+I want this next phase to focus on four goals:
+
+1. Make slash mode genuinely fun, skill-based, and visually exciting
+2. Add league table / season structure so matches matter
+3. Add football-connected event consequences from slash objects
+4. Implement the biggest missing systems from the original prototype spec
+
+## Overall instruction
+Preserve the existing core loop:
+hub -> slash -> rewards -> squad -> lineup -> match -> highlights -> return
+
+But improve quality, depth, and stickiness. Prioritize gameplay feel and retention over adding random extra features.
+
+# PART 1 — MAKE SLASH MODE MUCH BETTER
+
+The current slash mode is too bland:
+- objects slowly fall top to bottom
+- slashing is too easy
+- there is little tension, surprise, or strategy
+- visuals feel placeholder
+
+I want slash mode to feel exciting, readable, and addictive.
+
+## 1A. Improve object movement and spawn design
+Replace the current simple falling behavior with more varied motion patterns:
+- fast drops
+- slow heavy drops
+- angled movement
+- curved arcs
+- burst spawn clusters
+- staggered waves
+- occasional fake-out timing
+- rare high-value objects that move faster or require precision
+
+Create spawn logic that changes during the 20-second run:
+- seconds 0–5: easier warmup
+- seconds 5–12: denser and more varied
+- seconds 12–18: high intensity
+- seconds 18–20: climax / jackpot chance / risk spike
+
+## 1B. Improve risk/reward and decision-making
+Add more meaningful object types.
+
+### Positive objects
+- generic player shard
+- attacker shard
+- midfielder shard
+- defender shard
+- trait fragment
+- coins
+- evolution catalyst
+- golden prospect pack
+- combo orb
+- scout intel token
+- physio token
+- morale boost token
+
+### Negative / risky objects
+- red card trap
+- injury hazard
+- fake agent file
+- burnout token
+- scouting miss token
+
+### New football-connected event objects
+Add these and make them affect club state:
+- injury hazard: if hit, randomly injure one lineup player for the next match or reduce that player’s condition
+- burnout token: reduces manager XP or next slash reward quality
+- fake agent file: converts one reward roll into low-quality currency
+- morale boost token: next match gets a small team chemistry or composure boost
+- physio token: removes one active injury or prevents next injury effect
+- scout intel token: guarantees one role-targeted reward at end of run
+
+These should make slash feel more connected to football club management.
+
+## 1C. Improve combo and juice
+Make combos much more satisfying:
+- visible combo meter
+- combo tier names like Hot, On Fire, Unstoppable
+- better multiplier feedback
+- particle burst on combo increase
+- screen shake on rare hits
+- freeze-frame hit pause on golden objects
+- haptic feedback hooks where possible in Expo
+- stronger sound hooks for success, danger, and jackpot moments
+
+## 1D. Make slashing require more skill
+Improve collision / gesture feel:
+- make swipe trails look sharp and satisfying
+- reward slicing multiple items in one swipe
+- penalize sloppy swipes only lightly
+- make rare objects smaller or faster
+- allow “perfect chain” moments
+- add near-miss tension with hazards
+
+## 1E. Visual improvements for slash mode
+Upgrade the slash assets and overall presentation:
+- replace placeholder shapes with polished football-themed objects
+- player shards should look like neon player-card fragments
+- role shards should have football role icons
+- trait fragments should have distinct symbols
+- catalysts should feel rare and premium
+- hazards should be instantly readable
+- add depth with shadows, glow, scale, and parallax
+- improve reward reveal screen so it feels premium and exciting
+
+Use a sleek, modern, high-contrast football sci-fi aesthetic.
+Do not make it childish.
+
+# PART 2 — LEAGUE TABLE AND SEASON STRUCTURE
+
+Add a proper league system so matches feel meaningful.
+
+## 2A. League table screen
+Create a League screen showing:
+- rank
+- club name
+- played
+- wins
+- draws
+- losses
+- goals for
+- goals against
+- goal difference
+- points
+- recent form (W/D/L)
+
+Highlight the user’s club row clearly.
+
+## 2B. Fixture schedule and matchdays
+Replace isolated match feeling with season structure:
+- create a small league with 8–12 clubs
+- generate a season fixture list
+- show current matchday
+- show upcoming opponent
+- after each match, update standings
+- allow quick progression through the season
+
+For now, immediate play is okay, but structure it as matchdays within a season.
+
+## 2C. End-of-season outcomes
+Add prototype season resolution:
+- champion
+- promotion/relegation placeholder if useful
+- season rewards
+- reset into next season with club progression retained
+
+# PART 3 — POST-MATCH INSIGHT
+
+Make matches more understandable.
+
+After each match, add a post-match analysis panel:
+- why you won/lost
+- strongest player
+- weakest area
+- tactical note
+- suggested next improvement
+
+Examples:
+- “Your midfield passing was weaker than the opponent’s press.”
+- “Your striker finished well, but your defense gave away too many big chances.”
+- “High pressing drained stamina late in the match.”
+
+This can be rule-based for now. Do not overcomplicate with LLM dependency.
+
+# PART 4 — MISSING SYSTEMS FROM PROMPT 1
+
+Implement or improve the missing prototype systems that are not clearly present.
+
+## 4A. Daily objectives / season progress screen
+Add a dedicated screen for:
+- daily objectives
+- claim rewards
+- manager XP progress
+- season progress / season XP
+- milestone rewards
+
+## 4B. Duplicate handling and salvage
+Make duplicates explicit and useful:
+- duplicate players or extra shards should convert into coins + essence
+- if possible, let the user choose one of:
+  - quick sell
+  - convert to essence
+  - apply to player evolution
+Show this clearly in the rewards / player upgrade flows.
+
+## 4C. Admin / tuning dashboard
+Create an internal admin/debug screen where I can edit:
+- ticket cap
+- ticket refill rate
+- slash spawn density
+- object rarity
+- injury chance
+- morale effect values
+- shard thresholds
+- duplicate conversion values
+- match sim tuning values
+- league size
+- season reward values
+
+This can be a hidden developer screen inside the app for now.
+
+## 4D. Data layer cleanup
+Right now the app appears to persist locally. Keep local mode if necessary for speed, but refactor the data layer cleanly so the app is ready for backend persistence later.
+
+I want a structured architecture for:
+- users
+- clubs
+- player templates
+- owned players
+- traits
+- squads
+- fixtures
+- standings
+- match logs
+- slash runs
+- economy config
+- daily objectives
+
+If backend integration is feasible now, start moving persistence to proper storage-backed structured records. If not, still organize the code and storage shape as if a backend exists.
+
+# PART 5 — UX / PRESENTATION POLISH
+
+Improve the emotional quality of the app:
+- better home dashboard hierarchy
+- clearer calls to action
+- stronger reward modals
+- cleaner player detail screen
+- more premium broadcast-like match presentation
+- more club identity and football atmosphere
+
+I want this to feel like a real product prototype, not an internal dev demo.
+
+# PART 6 — PRIORITY ORDER
+
+Implement in this exact order:
+1. slash gameplay improvement
+2. slash assets and juice
+3. injury / morale / event objects
+4. league table and matchday structure
+5. post-match analysis
+6. daily objectives / season progress screen
+7. duplicate salvage clarity
+8. admin tuning screen
+9. data layer cleanup
+
+# PART 7 — DEFINITION OF DONE
+
+This phase is successful when:
+- slash mode feels exciting and skill-based
+- different runs feel varied
+- hitting hazards has meaningful football consequences
+- a proper league table exists and updates after each match
+- users can feel seasonal progression
+- match outcomes feel more understandable
+- the app feels visually much more premium than before
+
+Preserve all existing working systems unless necessary to improve them.
+Refactor carefully instead of replacing blindly.

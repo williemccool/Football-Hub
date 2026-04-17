@@ -27,35 +27,42 @@ export default function TabLayout() {
             style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
           />
         ),
-        tabBarLabelStyle: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: "Inter_600SemiBold", fontSize: 10 },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Hub",
-          tabBarIcon: ({ color }) => <Feather name="zap" size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Feather name="zap" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="squad"
         options={{
           title: "Squad",
-          tabBarIcon: ({ color }) => <Feather name="users" size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Feather name="users" size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="league"
+        options={{
+          title: "League",
+          tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="fixtures"
         options={{
           title: "Fixtures",
-          tabBarIcon: ({ color }) => <Feather name="calendar" size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Feather name="calendar" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="club"
         options={{
           title: "Club",
-          tabBarIcon: ({ color }) => <Feather name="award" size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Feather name="award" size={20} color={color} />,
         }}
       />
     </Tabs>

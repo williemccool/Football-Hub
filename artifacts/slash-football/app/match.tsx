@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -26,12 +26,12 @@ export default function MatchScreen() {
   const [awayScore, setAwayScore] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [done, setDone] = useState(false);
+  const [tab, setTab] = useState<"reel" | "analysis">("reel");
   const scrollRef = useRef<ScrollView>(null);
 
   const opponent = result?.opponent ?? state.upcomingOpponent.name;
 
   useEffect(() => {
-    // Generate the result eagerly so we can play it back
     const r = playFixture();
     setResult(r);
   }, []);
@@ -53,7 +53,6 @@ export default function MatchScreen() {
         return;
       }
       const e = result.events[i]!;
-      // Animate minute up to event
       const stepMinute = () => {
         if (lastMinute < e.minute) {
           lastMinute++;
@@ -98,6 +97,7 @@ export default function MatchScreen() {
 
   const win = result.homeScore > result.awayScore;
   const draw = result.homeScore === result.awayScore;
+  const analysis = result.analysis;
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.background }]}>
@@ -110,7 +110,7 @@ export default function MatchScreen() {
           <Feather name="x" size={22} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerLabel, { color: colors.mutedForeground }]}>
-          MATCHDAY
+          {result.matchday ? `MATCHDAY ${result.matchday}` : "MATCHDAY"}
         </Text>
         <Pressable
           onPress={done ? () => router.back() : skipToEnd}
@@ -159,34 +159,112 @@ export default function MatchScreen() {
         </View>
       </View>
 
+      {/* Tabs only after match is done */}
+      {done && analysis && (
+        <View style={styles.tabRow}>
+          <TabBtn active={tab === "reel"} onPress={() => setTab("reel")} label="Highlights" colors={colors} />
+          <TabBtn active={tab === "analysis"} onPress={() => setTab("analysis")} label="Analysis" colors={colors} />
+        </View>
+      )}
+
       <View
         style={[
           styles.timelineWrap,
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}
       >
-        <View style={styles.timelineHeader}>
-          <Feather name="play-circle" size={14} color={colors.primary} />
-          <Text style={[styles.timelineTitle, { color: colors.foreground }]}>
-            Highlight reel
-          </Text>
-        </View>
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={{ paddingVertical: 4 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {shownEvents.length === 0 && !playing && (
-            <View style={styles.emptyTimeline}>
-              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 13 }}>
-                Press play to watch the match unfold.
+        {tab === "reel" ? (
+          <>
+            <View style={styles.timelineHeader}>
+              <Feather name="play-circle" size={14} color={colors.primary} />
+              <Text style={[styles.timelineTitle, { color: colors.foreground }]}>
+                Highlight reel
               </Text>
             </View>
-          )}
-          {shownEvents.map((e, idx) => (
-            <EventRow key={idx} event={e} />
-          ))}
-        </ScrollView>
+            <ScrollView
+              ref={scrollRef}
+              contentContainerStyle={{ paddingVertical: 4 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {shownEvents.length === 0 && !playing && (
+                <View style={styles.emptyTimeline}>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 13 }}>
+                    Press play to watch the match unfold.
+                  </Text>
+                </View>
+              )}
+              {shownEvents.map((e, idx) => (
+                <EventRow key={idx} event={e} />
+              ))}
+            </ScrollView>
+          </>
+        ) : analysis ? (
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.analysisHeader}>
+              <Feather name="bar-chart-2" size={14} color={colors.primary} />
+              <Text style={[styles.timelineTitle, { color: colors.foreground }]}>Post-match analysis</Text>
+            </View>
+
+            <Text style={[styles.verdict, { color: colors.foreground }]}>{analysis.verdict}</Text>
+
+            {/* Stats bars */}
+            <StatBar
+              label="Possession"
+              homeVal={analysis.homeStats.possession}
+              awayVal={analysis.awayStats.possession}
+              colors={colors}
+              suffix="%"
+            />
+            <StatBar
+              label="Shots"
+              homeVal={analysis.homeStats.shots}
+              awayVal={analysis.awayStats.shots}
+              colors={colors}
+            />
+            <StatBar
+              label="Big chances"
+              homeVal={analysis.homeStats.bigChances}
+              awayVal={analysis.awayStats.bigChances}
+              colors={colors}
+            />
+
+            {analysis.strongestPlayer && (
+              <View style={[styles.insightCard, { borderColor: colors.primary, backgroundColor: "rgba(0,255,136,0.06)" }]}>
+                <Feather name="star" size={14} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.insightLabel, { color: colors.primary }]}>STAR PERFORMER</Text>
+                  <Text style={[styles.insightText, { color: colors.foreground }]}>{analysis.strongestPlayer}</Text>
+                </View>
+              </View>
+            )}
+
+            {analysis.weakestArea && (
+              <View style={[styles.insightCard, { borderColor: colors.destructive, backgroundColor: "rgba(255,59,92,0.06)" }]}>
+                <Feather name="alert-triangle" size={14} color={colors.destructive} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.insightLabel, { color: colors.destructive }]}>WEAKEST AREA</Text>
+                  <Text style={[styles.insightText, { color: colors.foreground }]}>{analysis.weakestArea}</Text>
+                </View>
+              </View>
+            )}
+
+            <View style={[styles.insightCard, { borderColor: colors.border, backgroundColor: "rgba(255,255,255,0.03)" }]}>
+              <Feather name="message-square" size={14} color={colors.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.insightLabel, { color: colors.accent }]}>TACTICAL NOTE</Text>
+                <Text style={[styles.insightText, { color: colors.foreground }]}>{analysis.tacticalNote}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.insightCard, { borderColor: colors.border, backgroundColor: "rgba(255,255,255,0.03)" }]}>
+              <Feather name="compass" size={14} color="#5BFFEA" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.insightLabel, { color: "#5BFFEA" }]}>SUGGESTION</Text>
+                <Text style={[styles.insightText, { color: colors.foreground }]}>{analysis.suggestion}</Text>
+              </View>
+            </View>
+          </ScrollView>
+        ) : null}
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -256,6 +334,42 @@ export default function MatchScreen() {
   );
 }
 
+function TabBtn({ active, onPress, label, colors }: { active: boolean; onPress: () => void; label: string; colors: ReturnType<typeof useColors> }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.tabBtn,
+        {
+          backgroundColor: active ? colors.primary : colors.card,
+          borderColor: active ? colors.primary : colors.border,
+        },
+      ]}
+    >
+      <Text style={{ color: active ? colors.primaryForeground : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function StatBar({ label, homeVal, awayVal, colors, suffix = "" }: { label: string; homeVal: number; awayVal: number; colors: ReturnType<typeof useColors>; suffix?: string }) {
+  const total = Math.max(1, homeVal + awayVal);
+  const homePct = (homeVal / total) * 100;
+  return (
+    <View style={styles.statBarRow}>
+      <Text style={[styles.statBarSide, { color: colors.primary, textAlign: "right" }]}>{homeVal}{suffix}</Text>
+      <View style={styles.statBarMid}>
+        <Text style={[styles.statBarLabel, { color: colors.mutedForeground }]}>{label}</Text>
+        <View style={[styles.statBarBg, { backgroundColor: "rgba(255,59,92,0.25)" }]}>
+          <View style={{ width: `${homePct}%`, height: "100%", backgroundColor: colors.primary }} />
+        </View>
+      </View>
+      <Text style={[styles.statBarSide, { color: colors.destructive }]}>{awayVal}{suffix}</Text>
+    </View>
+  );
+}
+
 function EventRow({ event }: { event: MatchEvent }) {
   const colors = useColors();
   const colorMap: Record<string, string> = {
@@ -300,7 +414,6 @@ function EventRow({ event }: { event: MatchEvent }) {
           styles.eventText,
           {
             color: colorMap[event.kind] ?? colors.foreground,
-            fontWeight: big ? "700" : "500",
             fontFamily: big ? "Inter_600SemiBold" : "Inter_500Medium",
           },
         ]}
@@ -339,7 +452,7 @@ const styles = StyleSheet.create({
   teamName: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center" },
   teamRating: { fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 2 },
   scoreCol: { alignItems: "center", paddingHorizontal: 12 },
-  scoreText: { fontSize: 44, fontWeight: "900", fontFamily: "Inter_700Bold" },
+  scoreText: { fontSize: 44, fontFamily: "Inter_700Bold" },
   minuteChip: {
     marginTop: 4,
     paddingHorizontal: 10,
@@ -348,9 +461,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   minuteText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  tabRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, marginTop: 14 },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+  },
   timelineWrap: {
     flex: 1,
     margin: 16,
+    marginTop: 12,
     borderRadius: 16,
     borderWidth: 1,
     padding: 12,
@@ -365,7 +487,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
+  analysisHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingBottom: 8,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
   timelineTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  verdict: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 16, lineHeight: 20 },
+  statBarRow: { flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 },
+  statBarSide: { width: 38, fontSize: 13, fontFamily: "Inter_700Bold" },
+  statBarMid: { flex: 1 },
+  statBarLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5, textAlign: "center", marginBottom: 4 },
+  statBarBg: { height: 6, borderRadius: 4, overflow: "hidden" },
+  insightCard: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  insightLabel: { fontSize: 9, letterSpacing: 1, fontFamily: "Inter_700Bold", marginBottom: 2 },
+  insightText: { fontSize: 13, fontFamily: "Inter_500Medium", lineHeight: 18 },
   emptyTimeline: { padding: 24, alignItems: "center" },
   eventRow: {
     flexDirection: "row",
@@ -415,7 +563,6 @@ const styles = StyleSheet.create({
   },
   resultBannerText: {
     color: "#0A0E1A",
-    fontWeight: "800",
     fontFamily: "Inter_700Bold",
     fontSize: 13,
     letterSpacing: 0.5,

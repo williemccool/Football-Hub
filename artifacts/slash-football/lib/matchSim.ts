@@ -1,7 +1,8 @@
-import type { GameState, MatchEvent, MatchResult, Player } from "./types";
+import { analyzeMatch } from "./postMatch";
 import { pickOpponent } from "./seedData";
+import type { GameState, MatchEvent, MatchResult, Player } from "./types";
 
-function teamRating(players: Player[], style: GameState["style"]): {
+function teamRating(players: Player[], style: GameState["style"], morale: number): {
   attack: number;
   midfield: number;
   defense: number;
@@ -12,7 +13,7 @@ function teamRating(players: Player[], style: GameState["style"]): {
   const mid = players.filter((p) => ["CM", "DM", "AM"].includes(p.role));
   const def = players.filter((p) => ["CB", "FB", "GK"].includes(p.role));
   const avg = (arr: Player[], k: keyof Player["stats"]) =>
-    arr.length === 0 ? 60 : arr.reduce((s, p) => s + p.stats[k], 0) / arr.length;
+    arr.length === 0 ? 60 : arr.reduce((s, p) => s + p.stats[k] * (p.condition / 100), 0) / arr.length;
   let attack = (avg(att, "shooting") + avg(att, "pace")) / 2;
   let midfield = avg(mid, "passing");
   let defense = avg(def, "defense");
@@ -23,6 +24,11 @@ function teamRating(players: Player[], style: GameState["style"]): {
     defense += 4;
     attack -= 3;
   }
+  // morale modifier ±3
+  const moraleBoost = (morale - 50) / 50 * 3;
+  attack += moraleBoost;
+  midfield += moraleBoost;
+  defense += moraleBoost;
   return {
     attack,
     midfield,
@@ -72,10 +78,10 @@ export function simulateMatch(
 ): MatchResult {
   const lineupPlayers = state.lineup
     .map((id) => state.players.find((p) => p.id === id))
-    .filter(Boolean) as Player[];
+    .filter((p): p is Player => Boolean(p))
+    .filter((p) => p.injuredMatches <= 0);
 
-  const home = teamRating(lineupPlayers, state.style);
-  // Build a synthetic away team rating
+  const home = teamRating(lineupPlayers, state.style, state.morale);
   const away = {
     attack: opponentRating + (Math.random() * 6 - 3),
     midfield: opponentRating + (Math.random() * 6 - 3),
@@ -102,12 +108,10 @@ export function simulateMatch(
       });
       continue;
     }
-    // Chance probability proportional to attack vs defense
     const homeChance = (home.attack + home.midfield * 0.5) / (home.attack + home.midfield + away.defense + 50);
     const awayChance = (away.attack + away.midfield * 0.5) / (away.attack + away.midfield + home.defense + 50);
 
     if (rand() < homeChance * 0.18) {
-      // Goal/save chance for home
       const conv = (home.attack + 60) / 200;
       const player = attackers.length > 0 ? attackers[Math.floor(rand() * attackers.length)]! : lineupPlayers[10];
       const pName = player ? player.name : "Striker";
@@ -182,8 +186,10 @@ export function simulateMatch(
 
   const win = homeScore > awayScore;
   const draw = homeScore === awayScore;
-  const coins = win ? 200 : draw ? 100 : 50;
+  const coins = win ? state.tuning.matchCoinWin : draw ? state.tuning.matchCoinDraw : 50;
   const xp = win ? 50 : draw ? 25 : 10;
+
+  const analysis = analyzeMatch(state, home, away, events, homeScore, awayScore);
 
   return {
     id: `match_${Date.now()}`,
@@ -195,6 +201,7 @@ export function simulateMatch(
     ratingAway: Math.round(away.overall),
     rewards: { coins, xp },
     playedAt: Date.now(),
+    analysis,
   };
 }
 
