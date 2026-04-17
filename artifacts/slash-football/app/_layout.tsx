@@ -15,6 +15,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SplashGate } from "@/components/SplashGate";
 import { GameProvider } from "@/context/GameContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -50,6 +51,18 @@ function RootLayoutNav() {
         name="tactics"
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />
+      <Stack.Screen
+        name="shop"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
+      <Stack.Screen
+        name="debug"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
+      <Stack.Screen
+        name="admin"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
     </Stack>
   );
 }
@@ -78,7 +91,9 @@ export default function RootLayout() {
             <KeyboardProvider>
               <GameProvider>
                 <StatusBar style="light" />
-                <RootLayoutNav />
+                <SplashGate>
+                  <RootLayoutNav />
+                </SplashGate>
               </GameProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

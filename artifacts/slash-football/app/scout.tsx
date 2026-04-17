@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +19,7 @@ import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import { motionForKind } from "@/lib/motion";
 import { comboTier, OBJECT_CONFIG, rewardFromCount, rollObject } from "@/lib/slashRewards";
+import { haptics } from "@/services";
 import type { MotionKind, ObjectKind } from "@/lib/types";
 
 const GAME_DURATION_MS = 20_000;
@@ -108,7 +108,7 @@ export default function ScoutScreen() {
       router.back();
       return;
     }
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.fire("comboUp");
     startTime.current = Date.now();
     lastSpawn.current = Date.now();
     lastTierRef.current = 0;
@@ -267,7 +267,7 @@ export default function ScoutScreen() {
     setInjuredName(out.injuredPlayer ? out.injuredPlayer.name : null);
     setMoraleDelta(out.moraleDelta);
     setPhase("done");
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.fire("success");
   };
 
   const triggerShake = () => {
@@ -338,7 +338,7 @@ export default function ScoutScreen() {
         tierAnim.setValue(0);
         Animated.spring(tierAnim, { toValue: 1, useNativeDriver: true, friction: 6 }).start();
         setTimeout(() => setTierFlash((cur) => (cur && Date.now() - cur.t > 800 ? null : cur)), 1100);
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        haptics.fire("comboUp");
       }
 
       // Special effects for premium objects
@@ -346,12 +346,12 @@ export default function ScoutScreen() {
         triggerFlash();
         triggerShake();
         freezeUntilRef.current = Date.now() + 220;
-        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.fire("golden");
       } else if (obj.kind === "catalyst") {
         triggerFlash();
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        haptics.fire("comboUp");
       } else {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        haptics.fire("slice");
       }
     } else {
       // Hazard hit
@@ -367,7 +367,7 @@ export default function ScoutScreen() {
       setCollected(collectedRef.current);
       spawnBurst(obj.x, obj.y, cfg.color, 10);
       triggerShake();
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      haptics.fire("hazard");
     }
   };
 
@@ -502,7 +502,7 @@ export default function ScoutScreen() {
             <RewardRow icon="dollar-sign" label="Coins" value={rewardSummary.coins} color={colors.accent} />
             <RewardRow icon="zap" label="Shards" value={rewardSummary.shards} color={colors.primary} />
             <RewardRow icon="shield" label="Role Shards" value={rewardSummary.roleShards.reduce((s, r) => s + r.amount, 0)} color="#41D7FF" />
-            <RewardRow icon="flame" label="Trait Fragments" value={rewardSummary.traitFragments} color="#B36BFF" />
+            <RewardRow icon="hexagon" label="Trait Fragments" value={rewardSummary.traitFragments} color="#B36BFF" />
             <RewardRow icon="aperture" label="Catalysts" value={rewardSummary.catalysts} color="#FF8A3D" />
             {rewardSummary.essence > 0 && <RewardRow icon="droplet" label="Essence" value={rewardSummary.essence} color="#A0F0FF" />}
             {moraleDelta !== 0 && <RewardRow icon="smile" label={moraleDelta > 0 ? "Morale +" : "Morale −"} value={Math.abs(moraleDelta)} color={moraleDelta > 0 ? "#FF8AC2" : colors.destructive} />}

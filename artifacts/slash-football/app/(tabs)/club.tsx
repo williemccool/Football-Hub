@@ -1,12 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
@@ -14,13 +15,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
+import { haptics } from "@/services";
 
 export default function ClubScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { state, reset } = useGame();
   const [tapCount, setTapCount] = useState(0);
+  const [hapticsOn, setHapticsOn] = useState(haptics.isEnabled());
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stay in sync with the persisted preference once it loads asynchronously.
+  useEffect(() => haptics.subscribe(setHapticsOn), []);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top + 8;
   const bottomPad = (Platform.OS === "web" ? 100 : insets.bottom) + 84;
@@ -125,7 +131,7 @@ export default function ClubScreen() {
         >
           <InvRow icon="dollar-sign" label="Coins" value={state.coins} color={colors.accent} />
           <InvRow icon="zap" label="Tickets" value={`${state.tickets}/${state.maxTickets}`} color={colors.primary} />
-          <InvRow icon="flame" label="Trait Fragments" value={state.traitFragments} color="#B36BFF" />
+          <InvRow icon="hexagon" label="Trait Fragments" value={state.traitFragments} color="#B36BFF" />
           <InvRow icon="aperture" label="Catalysts" value={state.catalysts} color="#FF8A3D" />
           <InvRow icon="droplet" label="Essence" value={state.essence} color="#41D7FF" />
           <InvRow icon="smile" label="Morale" value={state.morale} color="#FF8AC2" />
@@ -140,6 +146,49 @@ export default function ClubScreen() {
         >
           <InvRow icon="target" label="Best Slash Score" value={state.bestSlashScore} color={colors.primary} />
           <InvRow icon="play-circle" label="Total Slash Runs" value={state.totalSlashRuns} color={colors.accent} />
+        </View>
+
+        <Text style={[styles.section, { color: colors.mutedForeground }]}>EXTRAS</Text>
+        <View style={[styles.invCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Pressable
+            onPress={() => router.push("/shop")}
+            style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <View style={[styles.invIcon, { backgroundColor: colors.primary + "22" }]}>
+              <Feather name="shopping-bag" size={14} color={colors.primary} />
+            </View>
+            <Text style={[styles.invLabel, { color: colors.foreground }]}>Cosmetics shop</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/debug")}
+            style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <View style={[styles.invIcon, { backgroundColor: "#41D7FF22" }]}>
+              <Feather name="activity" size={14} color="#41D7FF" />
+            </View>
+            <Text style={[styles.invLabel, { color: colors.foreground }]}>Sync & Debug</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+
+        <Text style={[styles.section, { color: colors.mutedForeground }]}>SETTINGS</Text>
+        <View style={[styles.invCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.linkRow}>
+            <View style={[styles.invIcon, { backgroundColor: "#FF8AC222" }]}>
+              <Feather name="smartphone" size={14} color="#FF8AC2" />
+            </View>
+            <Text style={[styles.invLabel, { color: colors.foreground }]}>Haptics</Text>
+            <Switch
+              value={hapticsOn}
+              onValueChange={(v) => {
+                setHapticsOn(v);
+                haptics.setEnabled(v);
+                if (v) haptics.fire("tap");
+              }}
+              trackColor={{ true: colors.primary, false: colors.border }}
+            />
+          </View>
         </View>
 
         <Pressable
@@ -273,6 +322,13 @@ const styles = StyleSheet.create({
   },
   invLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
   invValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    gap: 12,
+  },
   resetBtn: {
     flexDirection: "row",
     alignItems: "center",

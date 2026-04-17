@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import {
@@ -11,9 +10,17 @@ import {
 } from "@/lib/league";
 import { simulateMatch, nextOpponent } from "@/lib/matchSim";
 import { createInitialState, defaultTuning, makePlayer, TRAIT_LIST } from "@/lib/seedData";
-import type { GameState, MatchResult, Player, Role, SlashReward, TuningConfig } from "@/lib/types";
+import { objectStorage, sync } from "@/services";
+import type {
+  GameState,
+  MatchResult,
+  Player,
+  Role,
+  SlashReward,
+  TuningConfig,
+} from "@/lib/types";
 
-const STORAGE_KEY = "slashfootball.state.v2";
+export type SalvageMode = "coins" | "essence" | "evolution";
 
 type Ctx = {
   state: GameState;
@@ -35,7 +42,7 @@ type Ctx = {
   refillTicketsIfDue: () => void;
   msUntilNextTicket: () => number;
   claimMission: (id: string) => boolean;
-  salvagePlayer: (id: string) => boolean;
+  salvagePlayer: (id: string, mode?: SalvageMode) => boolean;
   updateTuning: (partial: Partial<TuningConfig>) => void;
   startNewSeason: () => void;
 };
@@ -48,6 +55,42 @@ function clone<T>(x: T): T {
   return JSON.parse(JSON.stringify(x));
 }
 
+function hydrateFromLoaded(loaded: GameState | null): GameState {
+  const defaults = createInitialState();
+  if (!loaded) return defaults;
+  return {
+    ...defaults,
+    ...loaded,
+    tuning: { ...defaults.tuning, ...(loaded?.tuning ?? {}) },
+    season:
+      loaded?.season && loaded.season.schedule?.length > 0
+        ? loaded.season
+        : defaults.season,
+    players:
+      Array.isArray(loaded?.players) && loaded.players.length > 0
+        ? loaded.players.map((p: Player) => ({
+            condition: 100,
+            injuredMatches: 0,
+            ...(p as object),
+          } as Player))
+        : defaults.players,
+    lineup: Array.isArray(loaded?.lineup) ? loaded.lineup : defaults.lineup,
+    results: Array.isArray(loaded?.results) ? loaded.results : [],
+    dailyMissions:
+      Array.isArray(loaded?.dailyMissions) && loaded.dailyMissions.length > 0
+        ? loaded.dailyMissions.map((m: any) => ({ claimed: false, ...m }))
+        : defaults.dailyMissions,
+    upcomingOpponent: loaded?.upcomingOpponent ?? defaults.upcomingOpponent,
+    morale: typeof loaded?.morale === "number" ? loaded.morale : defaults.morale,
+    injuryShield: !!loaded?.injuryShield,
+    scoutIntelRole: loaded?.scoutIntelRole ?? null,
+    seasonXp: loaded?.seasonXp ?? 0,
+    bestSlashScore: loaded?.bestSlashScore ?? 0,
+    totalSlashRuns: loaded?.totalSlashRuns ?? 0,
+    championships: loaded?.championships ?? 0,
+  };
+}
+
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GameState>(() => createInitialState());
   const [loading, setLoading] = useState(true);
@@ -55,39 +98,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const defaults = createInitialState();
-          // Deep-ish merge so older saves still load.
-          const merged: GameState = {
-            ...defaults,
-            ...parsed,
-            tuning: { ...defaults.tuning, ...(parsed?.tuning ?? {}) },
-            season: parsed?.season && parsed.season.schedule?.length > 0 ? parsed.season : defaults.season,
-            players: Array.isArray(parsed?.players) && parsed.players.length > 0
-              ? parsed.players.map((p: Player) => ({
-                  condition: 100,
-                  injuredMatches: 0,
-                  ...p,
-                }))
-              : defaults.players,
-            lineup: Array.isArray(parsed?.lineup) ? parsed.lineup : defaults.lineup,
-            results: Array.isArray(parsed?.results) ? parsed.results : [],
-            dailyMissions: Array.isArray(parsed?.dailyMissions) && parsed.dailyMissions.length > 0
-              ? parsed.dailyMissions.map((m: any) => ({ claimed: false, ...m }))
-              : defaults.dailyMissions,
-            upcomingOpponent: parsed?.upcomingOpponent ?? defaults.upcomingOpponent,
-            morale: typeof parsed?.morale === "number" ? parsed.morale : defaults.morale,
-            injuryShield: !!parsed?.injuryShield,
-            scoutIntelRole: parsed?.scoutIntelRole ?? null,
-            seasonXp: parsed?.seasonXp ?? 0,
-            bestSlashScore: parsed?.bestSlashScore ?? 0,
-            totalSlashRuns: parsed?.totalSlashRuns ?? 0,
-            championships: parsed?.championships ?? 0,
-          };
-          setState(merged);
-        }
+        const loaded = await sync.loadInitial();
+        if (loaded) setState(hydrateFromLoaded(loaded));
       } catch (e) {
         console.warn("load state", e);
       } finally {
@@ -96,9 +108,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  // React to server-authoritative state pulled after a 409 conflict.
+  useEffect(() => {
+    const off = sync.subscribe((snap) => {
+      if (snap.serverState) {
+        const fresh = sync.consumeServerState();
+        if (fresh) setState(hydrateFromLoaded(fresh));
+      }
+    });
+    return off;
+  }, []);
+
   useEffect(() => {
     if (loading) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    // Local cache write + debounced backend push, both via the sync service.
+    sync.push(state).catch(() => {});
   }, [state, loading]);
 
   const refillTicketsIfDue = useCallback(() => {
@@ -132,8 +156,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(async () => {
     const fresh = createInitialState();
+    await sync.clearAll();
     setState(fresh);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+    await sync.push(fresh);
   }, []);
 
   const spendTicket = useCallback((): boolean => {
@@ -435,6 +460,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       else if (r.homeScore === r.awayScore) next.morale = Math.min(100, next.morale + 1);
       else next.morale = Math.max(0, next.morale - 5);
 
+      // Persist replay payload via portable object storage abstraction.
+      // Fire-and-forget — never block gameplay on this.
+      objectStorage
+        .putReplay(`replay_${r.id}`, {
+          id: r.id,
+          opponent: r.opponent,
+          homeScore: r.homeScore,
+          awayScore: r.awayScore,
+          events: r.events,
+          analysis: r.analysis,
+          playedAt: r.playedAt,
+        })
+        .catch(() => {});
+
       next.results = [r, ...next.results].slice(0, 30);
       next.coins += r.rewards.coins;
       next.managerXp += r.rewards.xp;
@@ -473,22 +512,63 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return ok;
   }, []);
 
-  const salvagePlayer = useCallback((id: string): boolean => {
+  const salvagePlayer = useCallback((id: string, mode: SalvageMode = "coins"): boolean => {
     let ok = false;
     setState((s) => {
       // Don't allow salvaging lineup players
       if (s.lineup.includes(id)) return s;
       const p = s.players.find((pp) => pp.id === id);
       if (!p) return s;
-      const coinValue = s.tuning.duplicateCoinValue + (p.rating - 60) * 4;
-      const essenceValue = 2 + Math.floor(p.rating / 10);
+      const baseCoin = s.tuning.duplicateCoinValue + (p.rating - 60) * 4;
+      const baseEss = 2 + Math.floor(p.rating / 10);
       ok = true;
+      const next = { ...s, players: s.players.filter((pp) => pp.id !== id) };
+      const traitRefund = p.trait ? 1 : 0;
+      if (mode === "essence") {
+        return {
+          ...next,
+          coins: s.coins + Math.floor(baseCoin * 0.4),
+          essence: s.essence + Math.round(baseEss * 2.2),
+          traitFragments: s.traitFragments + traitRefund,
+        };
+      }
+      if (mode === "evolution") {
+        // Apply value to a same-role candidate as shards + a small catalyst chance.
+        const candidates = s.players.filter(
+          (pp) => pp.role === p.role && pp.id !== p.id && pp.rating < pp.ceiling,
+        );
+        const target = candidates.sort((a, b) => b.rating - a.rating)[0];
+        const evolved = next.players.map((pp) => {
+          if (target && pp.id === target.id) {
+            const shardsGain = 4 + Math.floor(p.rating / 12);
+            let shards = pp.shards + shardsGain;
+            let rating = pp.rating;
+            let level = pp.level;
+            let shardsToNext = pp.shardsToNext;
+            while (shards >= shardsToNext && rating < pp.ceiling) {
+              shards -= shardsToNext;
+              shardsToNext = Math.min(20, shardsToNext + 2);
+              rating += 1;
+              level += 1;
+            }
+            return { ...pp, shards, shardsToNext, rating, level };
+          }
+          return pp;
+        });
+        return {
+          ...next,
+          players: evolved,
+          coins: s.coins + Math.floor(baseCoin * 0.5),
+          catalysts: s.catalysts + (Math.random() < 0.25 ? 1 : 0),
+          traitFragments: s.traitFragments + traitRefund,
+        };
+      }
+      // default: quick sell -> higher coin output
       return {
-        ...s,
-        coins: s.coins + coinValue,
-        essence: s.essence + essenceValue,
-        traitFragments: s.traitFragments + (p.trait ? 1 : 0),
-        players: s.players.filter((pp) => pp.id !== id),
+        ...next,
+        coins: s.coins + Math.round(baseCoin * 1.4),
+        essence: s.essence + Math.floor(baseEss * 0.5),
+        traitFragments: s.traitFragments + traitRefund,
       };
     });
     return ok;

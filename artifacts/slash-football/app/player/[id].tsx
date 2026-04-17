@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
+  Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,8 +12,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SalvagePicker, getRememberedSalvage } from "@/components/SalvagePicker";
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
+import { haptics } from "@/services";
+import type { SalvageMode } from "@/context/GameContext";
 
 const RARITY_COLOR = {
   Common: "#7B8497",
@@ -25,8 +30,16 @@ export default function PlayerDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, upgradePlayer, unlockTrait } = useGame();
+  const { state, upgradePlayer, unlockTrait, salvagePlayer } = useGame();
   const player = state.players.find((p) => p.id === id);
+  const [salvageOpen, setSalvageOpen] = useState(false);
+
+  const hasEvolutionTarget = useMemo(() => {
+    if (!player) return false;
+    return state.players.some(
+      (pp) => pp.role === player.role && pp.id !== player.id && pp.rating < pp.ceiling,
+    );
+  }, [player, state.players]);
 
   if (!player) {
     return (
@@ -216,7 +229,66 @@ export default function PlayerDetailScreen() {
             </Text>
           </View>
         )}
+
+        {!inLineup && (
+          <Pressable
+            onPress={async () => {
+              haptics.fire("tap");
+              const remembered = await getRememberedSalvage();
+              if (
+                remembered &&
+                (remembered !== "evolution" || hasEvolutionTarget)
+              ) {
+                const ok = salvagePlayer(player.id, remembered);
+                if (ok) {
+                  haptics.fire("success");
+                  router.back();
+                } else {
+                  haptics.fire("error");
+                  if (Platform.OS === "web")
+                    window.alert("Cannot salvage this player.");
+                  else
+                    Alert.alert("Cannot salvage", "Player may be in your lineup.");
+                }
+                return;
+              }
+              setSalvageOpen(true);
+            }}
+            onLongPress={() => {
+              haptics.fire("tap");
+              setSalvageOpen(true);
+            }}
+            delayLongPress={350}
+            style={({ pressed }) => [
+              styles.salvageBtn,
+              { borderColor: colors.destructive, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Feather name="trash-2" size={14} color={colors.destructive} />
+            <Text style={[styles.salvageText, { color: colors.destructive }]}>
+              Salvage player
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
+
+      <SalvagePicker
+        visible={salvageOpen}
+        options={{ player, hasEvolutionTarget }}
+        onCancel={() => setSalvageOpen(false)}
+        onConfirm={(mode: SalvageMode) => {
+          setSalvageOpen(false);
+          const ok = salvagePlayer(player.id, mode);
+          if (ok) {
+            haptics.fire("success");
+            router.back();
+          } else {
+            haptics.fire("error");
+            if (Platform.OS === "web") window.alert("Cannot salvage this player.");
+            else Alert.alert("Cannot salvage", "Player may be in your lineup.");
+          }
+        }}
+      />
     </View>
   );
 }
@@ -306,4 +378,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
+  salvageBtn: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  salvageText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 });
