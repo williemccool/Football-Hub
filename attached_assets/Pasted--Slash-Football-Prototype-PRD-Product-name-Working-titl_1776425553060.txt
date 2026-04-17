@@ -1,0 +1,1239 @@
+# Slash Football Prototype PRD
+
+## Product name
+
+Working title: **Slash Football**
+
+## Product vision
+
+Build a mobile-first football club simulation game where players repeatedly return for ultra-short **slash scouting runs**, collect player shards and traits, build a club, let that club compete in asynchronous simulated ([docs.replit.com](https://docs.replit.com/replitai/web-apps?utm_source=chatgpt.com)) matches.
+
+This is **not** a traditional football manager clone.
+This is a **collection-driven football club RPG/simulator** with a highly repeatable casual loop.
+
+## Prototype objective
+
+The first prototype must answer one question:
+
+**Will players enjoy the loop of scouting via slash gameplay, upgrading a club, and watching the consequences in simulated football matches?**
+
+The first prototype is successful if we can validate:
+
+1. The slash loop is fun enough to repeat.
+2. Squad progression feels meaningful.
+3. Simulated match outcomes feel understandable.
+4. Highlight reels feel rewarding enough to bring players back.
+5. The entire loop works well on mobile web inside a Replit-built product.
+
+---
+
+# 1. Platform decision
+
+## Chosen platform
+
+**Replit only** for the first prototype.
+
+## What that means in practice
+
+The first prototype can be built on Replit in **two valid formats**:
+
+* a **native mobile app** using **React Native + Expo**
+* a **responsive web companion/admin surface** for internal tools if needed
+
+## Recommended prototype format
+
+For this game, the recommended primary client is:
+
+* **native mobile app first** for iOS and Android using React Native + Expo on Replit
+* optional lightweight web surfaces for admin tooling, economy tuning, and internal testing
+
+## Why this is now the preferred route
+
+This game benefits from:
+
+* better touch interaction for the slash mechanic
+* stronger mobile feel for repeat 20-second sessions
+* easier use of device-native patterns such as haptics, notifications, and full-screen interaction
+* a cleaner path to eventual App Store and Play Store distribution
+
+## What we are not building in prototype v1
+
+* no Unity
+* no full console-style realistic 3D football engine
+* no real player or club licensing
+* no multiplayer real-time manual gameplay
+* no complicated transfer market
+
+## Product format for prototype v1
+
+* **frontend client:** native mobile app built on Replit with React Native + Expo
+* **backend:** API + simulation engine hosted on Replit
+* **database:** Replit SQL database
+* **storage:** Replit App Storage for replay data, assets, and generated highlight payloads
+* **deployment:** Replit deployment for backend, plus Expo-based native preview/distribution during prototype stage
+
+---
+
+# 2. Core game fantasy
+
+The player fantasy is:
+
+**Scout unknown talent, build a club identity, evolve your squad, and watch your football decisions turn into match moments.**
+
+The emotional progression is:
+
+1. I found this player.
+2. I invested in this player.
+3. I fixed my weak squad area.
+4. I watched that improvement show up in the match.
+5. I now want to return and improve more.
+
+---
+
+# 3. Core gameplay loop
+
+## Primary loop
+
+1. Player opens the game
+2. Player uses available scouting tickets
+3. Player plays a 20-second slash run
+4. Player earns rewards
+5. Player unlocks or upgrades players and traits
+6. Player configures squad and tactics
+7. Club participates in async fixtures
+8. Player watches short highlight reel
+9. Player claims rewards and season progress
+10. Player returns later for more scouting runs
+
+## Secondary loop
+
+* complete daily objectives
+* improve weak positions
+* salvage duplicates
+* unlock traits
+* progress season track
+* customize club visuals
+
+## Long-term loop
+
+* build a better club over time
+* climb divisions or league ranks
+* collect rarer archetypes
+* evolve star players
+* define club identity and play style
+
+---
+
+# 4. Target audience
+
+## Primary audience
+
+* mobile-first football fans aged roughly 14–30
+* players who enjoy football fantasy but do not want deep spreadsheet management from the first minute
+* players who enjoy short repeatable loops
+* players who like team-building, progression, and highlights
+
+## Secondary audience
+
+* football manager fans who want a lighter habit game
+* players of FC Mobile, Top Eleven, Dream League Soccer, Soccer Manager, and similar titles
+* Gen Z users who prefer short sessions and visually rewarding outcomes
+
+---
+
+# 5. Prototype scope
+
+## Included in prototype v1
+
+### A. Slash scouting mode
+
+* 20-second timed gameplay loop
+* swipe/slash interaction
+* combo scoring
+* reward drops after each run
+* mobile-friendly responsive controls
+
+### B. Reward system
+
+* player shards
+* role-specific shards
+* trait fragments
+* coins
+* training XP
+* evolution catalysts
+* duplicate salvage
+
+### C. Club and squad system
+
+* roster screen
+* player cards
+* player unlocks through shards
+* player leveling
+* one trait slot initially
+* one formation system
+* starting lineup + bench
+
+### D. Match simulation
+
+* deterministic server-side match sim
+* two squads enter fixture
+* sim produces event log
+* event log stores major moments
+* match result, goals, cards, and key stats
+
+### E. Highlight reel
+
+* show only top moments
+* stylized pitch view, not realistic 3D
+* short replay cards/animated scenes for goals, big chances, saves, cards
+* final score and match summary
+
+### F. Meta progression
+
+* daily scouting tickets
+* basic season pass structure placeholder
+* club XP / manager level
+* daily missions
+
+### G. Admin/live tuning tools
+
+* admin dashboard to tune drop rates
+* admin controls for ticket refill times
+* admin controls for reward weights
+* match simulation parameter editor
+
+## Excluded from prototype v1
+
+* real player licenses
+* ranked PvP economy balancing at scale
+* live auctions
+* transfer market
+* social chat
+* clan wars
+* stadium building system
+* advanced 3D animation engine
+* multiple formations and full tactical depth
+* app-store billing
+* multi-provider AI coach marketplace
+
+---
+
+# 6. Slash scouting mode design
+
+## Purpose
+
+This is the habit loop.
+It must be fast, tactile, and rewarding.
+
+## Session length
+
+* 20 seconds
+
+## Ticket system
+
+* max tickets: 5
+* refill cadence configurable in admin panel
+* prototype default: 1 every 90 minutes
+
+## Slash interaction
+
+The player swipes through floating objects.
+
+## Object types
+
+### Positive objects
+
+* player shard capsules
+* midfielder shard orbs
+* defender shard orbs
+* attacker shard orbs
+* trait fragments
+* coin bundles
+* training tokens
+* evolution catalysts
+
+### Negative objects
+
+* red card traps
+* fake agent files
+* injury hazard markers
+* burnout icons
+
+### Special objects
+
+* golden prospect pack
+* role-targeted rare orb
+* combo multiplier orb
+* lucky salvage token
+
+## Scoring rules
+
+* each object gives point value and reward value
+* combo chains increase reward multiplier
+* hitting negative objects reduces multiplier or removes one reward slot
+* higher score slightly improves end-of-run quality
+
+## End-of-run output
+
+After each run, present:
+
+* total score
+* rewards earned
+* duplicate conversion result if applicable
+* one CTA: upgrade player / play another run / go to squad
+
+---
+
+# 7. Economy design
+
+## Currencies
+
+### Soft currency
+
+**Coins**
+Used for:
+
+* player upgrades
+* trait unlock costs
+* light crafting
+
+### Progression currency
+
+**Player Shards**
+Used to unlock players and evolve them.
+
+### Trait currency
+
+**Trait Fragments**
+Used to unlock or upgrade traits.
+
+### Rare progression item
+
+**Evolution Catalysts**
+Used for higher-tier progression bands.
+
+### Salvage currency
+
+**Essence**
+Obtained from duplicates.
+Used for:
+
+* targeted shard crafting
+* rerolls
+* evolution support
+
+## Duplicate handling
+
+When player gets a duplicate:
+
+* extra shards add toward same player growth track if below cap
+* if already capped, duplicate converts to:
+
+  * coins
+  * essence
+  * optional small trait-fragment chance
+
+## Prototype reward weighting
+
+* generic shards: high frequency
+* role-targeted shards: medium frequency
+* trait fragments: medium-low frequency
+* coins: medium frequency
+* catalysts: low frequency
+* full unlocks: very low frequency
+
+## Design principle
+
+Slash mode should **mostly generate fragments and progression materials**, not endless full player cards.
+
+---
+
+# 8. Player system
+
+## Player model
+
+Each player has:
+
+* id
+* name
+* fictional nationality
+* age bracket
+* role
+* archetype
+* overall rating
+* core stats
+* growth ceiling
+* level
+* trait slots
+* chemistry tags
+* rarity
+* shard progress
+
+## Core stats
+
+* pace
+* passing
+* shooting
+* control
+* defense
+* physical
+* vision
+* composure
+
+## Roles
+
+* GK
+* CB
+* FB
+* DM
+* CM
+* AM
+* Winger
+* ST
+
+## Rarity tiers
+
+* Common
+* Uncommon
+* Rare
+* Epic
+* Legendary
+
+## Starting rating range
+
+* common starter players around 60–68
+* uncommon 65–72
+* rare 70–76
+* epic 74–80
+* legendary prototype-limited and not widely available yet
+
+## Rating progression bands
+
+* 60–75 fast
+* 75–85 moderate
+* 85–92 slow
+* 92–100 prestige
+
+For prototype v1 we only fully tune up to about **85–88**.
+
+---
+
+# 9. Traits system
+
+## Purpose
+
+Traits make the squad strategic rather than just numeric.
+
+## Example traits
+
+* Clinical Finisher
+* Late Runner
+* Press Trigger
+* Long Ball Specialist
+* Box Defender
+* Agile Dribbler
+* Big Match Composure
+* Risky Distributor
+* Fragile Fitness
+
+## Trait rules in prototype
+
+* 1 trait slot active per player
+* traits unlocked with fragments + coin cost
+* some traits buff one area and slightly weaken another if needed
+
+---
+
+# 10. Squad and tactics
+
+## Prototype tactical depth
+
+Keep it light.
+
+### Squad screens
+
+* roster
+* lineup
+* substitutes
+* player detail
+
+### Tactical settings in v1
+
+* one formation choice from a small set
+* team style:
+
+  * balanced
+  * attacking
+  * defensive
+* pressing level:
+
+  * low
+  * medium
+  * high
+* tempo:
+
+  * slow
+  * normal
+  * fast
+
+This is enough for prototype validation.
+
+---
+
+# 11. Match simulation system
+
+## Principle
+
+The simulation must be:
+
+* deterministic
+* explainable
+* server-authoritative
+* cheap to run
+
+## Inputs
+
+* lineup
+* formation
+* team style
+* pressing
+* tempo
+* player ratings
+* role fit
+* trait effects
+* chemistry
+* fatigue
+* randomness seed
+
+## Outputs
+
+* final score
+* goalscorers
+* cards
+* possession approximation
+* chance quality count
+* key event log
+* player rating summary
+
+## Event log structure
+
+Each event should capture:
+
+* minute
+* event type
+* team
+* player ids involved
+* pitch zone
+* event importance
+* camera hint
+* commentary hint
+
+## Event types
+
+* chance created
+* shot
+* save
+* goal
+* yellow card
+* red card
+* interception
+* counterattack
+* set piece
+* missed big chance
+
+## Match cadence in prototype
+
+* async fixtures generated on schedule
+* user does not manually play match
+* match resolves server-side when ready
+* user later opens result and watches highlights
+
+---
+
+# 12. Highlight reel design
+
+## Purpose
+
+This is the emotional payoff.
+
+## Rendering approach
+
+For the Replit native prototype, use a **stylized 2D/2.5D pitch animation layer**, not complex full 3D.
+
+## Why
+
+* faster to build
+* easier to run in browser
+* easier to polish
+* still emotionally effective if camera cuts and pacing are good
+
+## Reel format
+
+* duration: 20–45 seconds
+* moments shown:
+
+  * goals
+  * saves
+  * dangerous attacks
+  * cards
+  * late drama
+
+## Visual style
+
+* clean modern football broadcast UI
+* mini pitch or stylized isometric field
+* player circles or lightweight avatars
+* ball movement animation
+* score overlays
+* celebration flash
+* momentum bars
+
+## Outcome screen
+
+After highlights, show:
+
+* full-time score
+* key stat summary
+* top performer
+* squad weakness insight
+* claim rewards button
+
+---
+
+# 13. AI usage in prototype
+
+## Allowed AI uses
+
+* match summary text
+* scouting descriptions
+* player flavor text
+* post-match analyst note
+* daily event copy
+
+## Not allowed in prototype
+
+* AI deciding actual competitive outcomes
+* external branded AI models affecting win rate
+* per-user model selection changing match fairness
+
+## Product framing
+
+All users use the same sim engine.
+AI is presentation, flavor, and analysis only.
+
+---
+
+# 14. Replit-only technical architecture
+
+## Architecture overview
+
+Single Replit project containing:
+
+* frontend artifact
+* backend API
+* simulation service layer
+* admin dashboard
+* database schema
+* storage integration
+
+## Suggested stack inside Replit
+
+### Frontend client
+
+* React Native
+* Expo
+* TypeScript
+* NativeWind or a clean React Native styling system
+* React Native Reanimated for smooth motion
+* Canvas or lightweight animated rendering approach for slash gameplay and highlight playback
+
+### Optional web admin surface
+
+* Next.js or React + Vite
+* Tailwind CSS
+* internal-only admin dashboard for tuning economy, fixtures, and simulation parameters
+
+### Backend
+
+* Node.js with TypeScript
+* Express or Next.js API routes
+* deterministic simulation engine in TypeScript
+
+### Database
+
+Use Replit SQL database for:
+
+* users
+* clubs
+* players
+* player ownership
+* shards
+* traits
+* squads
+* fixtures
+* match logs
+* rewards
+* economy configuration
+
+### Storage
+
+Use Replit App Storage for:
+
+* replay payload JSON
+* generated summary artifacts
+* image assets if needed
+* cosmetic assets
+
+### Deployment
+
+* Replit autoscale deployment
+
+### Secrets
+
+Use Replit Secrets for:
+
+* API keys
+* auth secrets
+* any optional LLM keys
+
+---
+
+# 15. Data model
+
+## Core tables
+
+### users
+
+* id
+* email or anonymous auth id
+* username
+* created_at
+* manager_level
+* coins
+* season_xp
+
+### clubs
+
+* id
+* user_id
+* club_name
+* crest
+* primary_color
+* secondary_color
+* stadium_theme
+* current_division
+
+### player_templates
+
+* id
+* name
+* role
+* archetype
+* rarity
+* base_stats_json
+* growth_profile_json
+
+### user_players
+
+* id
+* user_id
+* player_template_id
+* level
+* overall_rating
+* shards_owned
+* trait_slots_unlocked
+* fatigue
+* chemistry_state
+
+### traits
+
+* id
+* name
+* effect_json
+* rarity
+
+### user_traits
+
+* id
+* user_id
+* trait_id
+* count
+
+### squads
+
+* id
+* user_id
+* formation
+* style
+* pressing
+* tempo
+
+### squad_slots
+
+* id
+* squad_id
+* position_key
+* user_player_id
+
+### fixtures
+
+* id
+* home_club_id
+* away_club_id
+* scheduled_at
+* status
+* result_home
+* result_away
+* replay_storage_key
+
+### match_events
+
+* id
+* fixture_id
+* minute
+* event_type
+* team_side
+* actor_ids_json
+* zone
+* importance
+* payload_json
+
+### slash_runs
+
+* id
+* user_id
+* started_at
+* ended_at
+* score
+* multiplier
+* rewards_json
+
+### economy_config
+
+* id
+* key
+* value_json
+* updated_at
+
+### daily_objectives
+
+* id
+* code
+* reward_json
+
+### user_objective_progress
+
+* id
+* user_id
+* objective_id
+* progress
+* completed
+
+---
+
+# 16. Screens for prototype
+
+## Player-facing mobile screens
+
+1. Splash / login
+2. Club creation
+3. Home dashboard
+4. Slash scouting screen
+5. Rewards summary modal
+6. Squad screen
+7. Player detail and upgrade screen
+8. Fixture list
+9. Match result + highlight screen
+10. Daily missions / season progress
+11. Shop placeholder (cosmetics only for now)
+
+## Admin screens
+
+1. Economy tuning dashboard
+2. Reward table editor
+3. Ticket refill configuration
+4. Trait and player template editor
+5. Fixture inspector
+6. Match event viewer
+
+---
+
+# 17. Success metrics for prototype
+
+## Must-have validation metrics
+
+* first session completion rate
+* average slash runs per active user
+* roster upgrade interaction rate
+* match highlight watch completion rate
+* day-1 return rate
+* percentage of players who understand what to do after first match
+
+## Qualitative validation questions
+
+* did slash feel fun or repetitive?
+* did users feel their upgrades changed the match?
+* did highlight reels feel satisfying or fake?
+* did the game feel fresh versus football manager titles?
+* did users understand why they won or lost?
+
+---
+
+# 18. Milestones
+
+## Milestone 1: Core shell
+
+* auth or guest session
+* club creation
+* basic home screen
+* database schema
+
+## Milestone 2: Slash mode MVP
+
+* slash gameplay
+* scoring
+* reward generation
+* reward summary UI
+
+## Milestone 3: Roster and progression
+
+* user players
+* shards
+* upgrades
+* duplicate salvage
+* trait fragments
+
+## Milestone 4: Match simulation MVP
+
+* fixture generation
+* deterministic sim engine
+* stats output
+* match event logging
+
+## Milestone 5: Highlight reel MVP
+
+* replay playback from event log
+* score overlays
+* final summary
+
+## Milestone 6: Daily loop and admin tools
+
+* tickets
+* missions
+* economy dashboard
+* reward editor
+
+## Milestone 7: Closed prototype test
+
+* collect telemetry
+* fix core loop friction
+* patch economy
+
+---
+
+# 19. Risks
+
+## Risk 1
+
+Slash gameplay is fun only once and becomes repetitive.
+
+### Mitigation
+
+* combo system
+* targeted role rewards
+* special event objects
+* negative hazards
+* visible progression purpose
+
+## Risk 2
+
+Sim outcomes feel random or unfair.
+
+### Mitigation
+
+* readable post-match explanations
+* deterministic event generation
+* squad weakness feedback
+
+## Risk 3
+
+Browser performance is weak on mobile.
+
+### Mitigation
+
+* stylized visuals
+* 2D/2.5D rendering
+* avoid heavy physics
+* optimize animation loops
+
+## Risk 4
+
+Prototype becomes too big.
+
+### Mitigation
+
+* cut to one formation set, one season loop, one sim mode, one highlight style
+
+---
+
+# 20. Definition of done for prototype v1
+
+The prototype is done when a user can:
+
+1. open the game on mobile browser
+2. create a club
+3. play a slash scouting run
+4. collect rewards
+5. unlock or upgrade a player
+6. set a squad
+7. trigger or receive a simulated fixture
+8. watch highlight moments
+9. understand result and next action
+10. repeat the loop
+
+---
+
+# 21. First master prompt for Replit Agent
+
+Use this as the first full build prompt inside Replit.
+
+---
+
+Build a **native mobile game prototype** called **Slash Football** using **React Native + Expo on Replit**.
+
+This is a football club-building simulation game with a short repeatable scouting minigame.
+
+## Product concept
+
+Players repeatedly return to play a **20-second slash-based scouting mode** where they swipe through football-themed objects to collect:
+
+* player shards
+* role-specific shards
+* trait fragments
+* coins
+* training XP
+* evolution catalysts
+
+They then use those rewards to build and evolve a football squad. The squad enters **asynchronous simulated fixtures**. Matches are not manually played. Instead, the backend runs a deterministic simulation and the user later watches a short **highlight reel** showing only important events such as goals, saves, big chances, and cards.
+
+This is **not** a traditional football manager clone. It is a **collection-driven football club RPG/sim** with a highly repeatable casual loop.
+
+## Core requirements
+
+### 1. Tech stack
+
+Use:
+
+* React Native frontend
+* Expo
+* TypeScript throughout
+* native mobile-first UI
+* Replit SQL database
+* Replit App Storage
+* Replit Secrets for any environment variables
+* optional lightweight web admin artifact if useful
+
+### 2. Product areas to build
+
+Build these sections:
+
+* onboarding / club creation
+* home dashboard
+* slash scouting gameplay screen
+* reward summary screen
+* squad / roster screen
+* player detail and upgrade screen
+* fixtures screen
+* match result and highlight reel screen
+* daily objectives / season progress screen
+* simple admin dashboard for economy tuning
+
+### 3. Slash scouting mode
+
+Create a 20-second game where football-themed objects move on screen and the player swipes across them.
+
+Positive objects:
+
+* generic player shards
+* attacker shards
+* midfielder shards
+* defender shards
+* trait fragments
+* coins
+* evolution catalyst
+* rare golden prospect orb
+
+Negative objects:
+
+* red card trap
+* injury hazard
+* fake agent item
+
+Gameplay rules:
+
+* swiping positive items adds score and rewards
+* combo chains multiply score and reward quality
+* hitting negative items lowers multiplier or removes reward quality
+* after 20 seconds, show a clean reward summary modal
+
+### 4. Reward and progression system
+
+Implement:
+
+* player shard collection
+* unlocking fictional players from shard thresholds
+* duplicate handling that converts excess progress into coins and essence
+* player leveling with coin cost
+* one simple trait slot per player
+
+### 5. Squad and tactics
+
+Implement:
+
+* roster list
+* selected squad
+* one formation system
+* style selection: balanced / attacking / defensive
+* pressing selection: low / medium / high
+* tempo selection: slow / normal / fast
+
+### 6. Match simulation
+
+Create a deterministic backend football sim using:
+
+* lineup
+* player ratings
+* tactics
+* traits
+* chemistry or cohesion placeholder
+* randomness seed
+
+Generate:
+
+* final score
+* key stats
+* event log with moments like goal, save, big chance, yellow card, red card
+
+### 7. Highlight reel
+
+Do not build full realistic 3D.
+Build a stylized animated highlight viewer using a native-friendly 2D or 2.5D pitch presentation.
+
+Show:
+
+* scoreboard
+* match minute
+* animated ball movement
+* player markers or lightweight avatars
+* transitions between key events
+* celebrations for goals
+* final result summary
+
+### 8. Admin dashboard
+
+Create an internal admin panel where I can edit:
+
+* scouting ticket cap
+* ticket refill rate
+* drop rates
+* shard thresholds
+* trait fragment rates
+* match sim tuning weights
+
+### 9. Data model
+
+Create database tables for:
+
+* users
+* clubs
+* player_templates
+* user_players
+* traits
+* user_traits
+* squads
+* squad_slots
+* fixtures
+* match_events
+* slash_runs
+* economy_config
+* daily objectives
+* user objective progress
+
+### 10. UX and design direction
+
+The design should feel:
+
+* sleek
+* sporty
+* modern
+* mobile-game-like
+* clean and premium
+* high contrast
+* polished enough to feel like a real product prototype
+
+Use:
+
+* large touch targets
+* strong card layouts
+* smooth transitions
+* strong reward feedback
+* football broadcast-inspired match overlays
+* energetic but not childish UI
+
+### 11. Prototype priority
+
+Prioritize functionally proving the loop:
+slash -> collect -> upgrade -> squad -> simulate -> highlights -> return
+
+If time or complexity becomes an issue, prefer:
+
+* simpler visuals
+* stronger loop functionality
+* stronger admin configurability
+* clean deterministic simulation
+
+### 12. Final delivery expectation
+
+I want a working full-stack prototype that I can run in Replit, inspect, tune, and continue building.
+Start with a clear project structure, generate the database schema, then implement the core user flow from onboarding through a first playable slash run and one simulated match.
+
+---
+
+# 22. Build order for Replit Agent
+
+After the initial scaffold, instruct Agent to follow this order:
+
+1. project structure + database schema
+2. onboarding + club creation
+3. slash mode MVP
+4. reward pipeline
+5. roster and upgrade system
+6. squad selection
+7. match simulation engine
+8. highlight viewer
+9. admin dashboard
+10. analytics hooks
+
+---
+
+# 23. What to do immediately after the first Replit build
+
+After Agent generates the first version:
+
+1. test slash run on a real phone through Expo Go
+2. test reward persistence
+3. test player unlock
+4. test fixture generation
+5. test one highlight reel
+6. simplify any slow animation
+7. tune reward output before adding more content
+
+---
+
+# 24. Prototype principle
+
+If a tradeoff appears, always choose:
+**clarity of loop over feature count**.
+
+The prototype wins if players say:
+**“I want one more run, and I want to see if my team is better now.”**
