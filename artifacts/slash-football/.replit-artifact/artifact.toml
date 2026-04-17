@@ -1,31 +1,27 @@
-kind = "web"
+kind = "mobile"
 previewPath = "/"
 title = "Slash Football"
 version = "1.0.0"
 id = "artifacts/slash-football"
-router = "path"
+router = "expo-domain"
 
 [[integratedSkills]]
-name = "react-vite"
+name = "expo"
 version = "1.0.0"
 
 [[services]]
-name = "web"
+ensurePreviewReachable = "/status"
+name = "expo"
 paths = [ "/" ]
-localPort = 18993
+localPort = 21394
 
 [services.development]
 run = "pnpm --filter @workspace/slash-football run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/slash-football", "run", "build" ]
-publicDir = "artifacts/slash-football/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+run = [ "pnpm", "--filter", "@workspace/slash-football", "run", "serve" ]
 
 [services.env]
-PORT = "18993"
+PORT = "21394"
 BASE_PATH = "/"
