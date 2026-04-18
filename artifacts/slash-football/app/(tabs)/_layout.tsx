@@ -1,9 +1,19 @@
-import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
+import { Icon3D, Icon3DName } from "@/components/Icon3D";
 import { useColors } from "@/hooks/useColors";
+
+function TabIcon({ name, focused }: { name: Icon3DName; focused: boolean }) {
+  return (
+    <Icon3D
+      name={name}
+      size={focused ? 24 : 22}
+      style={{ opacity: focused ? 1 : 0.7 }}
+    />
+  );
+}
 
 export default function TabLayout() {
   const colors = useColors();
@@ -34,35 +44,35 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Hub",
-          tabBarIcon: ({ color }) => <Feather name="zap" size={20} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="stadium" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="squad"
         options={{
           title: "Squad",
-          tabBarIcon: ({ color }) => <Feather name="users" size={20} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="boot" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="league"
         options={{
           title: "League",
-          tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={20} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="trophy" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="fixtures"
         options={{
           title: "Fixtures",
-          tabBarIcon: ({ color }) => <Feather name="calendar" size={20} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="calendar" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="club"
         options={{
           title: "Club",
-          tabBarIcon: ({ color }) => <Feather name="award" size={20} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="shield" focused={focused} />,
         }}
       />
     </Tabs>

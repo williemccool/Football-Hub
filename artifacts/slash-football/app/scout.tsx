@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon3D } from "@/components/Icon3D";
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import { motionForKind } from "@/lib/motion";
@@ -412,67 +413,133 @@ export default function ScoutScreen() {
   const tier = comboTier(combo);
 
   if (phase === "intro") {
+    const stickyHeight = 96 + insets.bottom;
+    const canStart = state.tickets > 0;
     return (
       <View style={[styles.fill, { backgroundColor: colors.background }]}>
+        <LinearGradient
+          colors={["#0A0E1A", "#11193A", "#0A0E1A"]}
+          style={StyleSheet.absoluteFill}
+        />
         <ScrollView
-          contentContainerStyle={[styles.introWrap, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 100 }]}
+          contentContainerStyle={[
+            styles.introWrap,
+            {
+              paddingTop: insets.top + 16,
+              // Reserve room for the sticky CTA so the last legend row is visible.
+              paddingBottom: stickyHeight + 16,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
         >
-          <Pressable onPress={() => router.back()} style={styles.closeBtn}>
-            <Feather name="x" size={24} color={colors.foreground} />
-          </Pressable>
-          <Text style={[styles.introTitle, { color: colors.foreground }]}>SLASH</Text>
-          <Text style={[styles.introSubtitle, { color: colors.mutedForeground }]}>
-            20s. Slice positives, dodge red traps. Build combos for huge multipliers.
+          <View style={styles.introHeader}>
+            <View style={styles.introHeaderLeft}>
+              <Icon3D name="football" size={36} />
+              <View style={{ marginLeft: 10 }}>
+                <Text style={[styles.introTitle, { color: colors.foreground }]}>SLASH</Text>
+                <Text style={[styles.introTagline, { color: colors.mutedForeground }]}>
+                  20s scouting frenzy
+                </Text>
+              </View>
+            </View>
+            <Pressable onPress={() => router.back()} style={styles.closeBtnInline} hitSlop={10}>
+              <Icon3D name="close" size={18} />
+            </Pressable>
+          </View>
+
+          <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.heroRow}>
+              <Icon3D name="ticket" size={24} />
+              <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>TICKETS</Text>
+              <Text style={[styles.heroValue, { color: colors.foreground }]}>{state.tickets}</Text>
+            </View>
+            <View style={[styles.heroDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.heroRow}>
+              <Icon3D name="trophy" size={22} />
+              <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>BEST</Text>
+              <Text style={[styles.heroValue, { color: colors.foreground }]}>{state.bestSlashScore ?? 0}</Text>
+            </View>
+            <View style={[styles.heroDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.heroRow}>
+              <Icon3D name="stopwatch" size={22} />
+              <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>RUN</Text>
+              <Text style={[styles.heroValue, { color: colors.foreground }]}>20s</Text>
+            </View>
+          </View>
+
+          {state.scoutIntelRole && (
+            <View style={[styles.intelBanner, { borderColor: "#5BFFEA", backgroundColor: "rgba(91,255,234,0.08)" }]}>
+              <Icon3D name="target" size={16} />
+              <Text style={[styles.intelText, { color: colors.foreground }]}>
+                Scout Intel active — next shards target{" "}
+                <Text style={{ color: "#5BFFEA", fontFamily: "Inter_700Bold" }}>{state.scoutIntelRole}</Text>
+              </Text>
+            </View>
+          )}
+
+          <Text style={[styles.introHint, { color: colors.mutedForeground }]}>
+            Slice positives. Dodge red. Chain hits to ignite combo tiers.
           </Text>
 
           <View style={styles.legendSection}>
-            <Text style={[styles.legendHeading, { color: colors.primary }]}>POSITIVE</Text>
+            <Text style={[styles.legendHeading, { color: colors.primary }]}>SLICE — POSITIVE</Text>
             <View style={styles.legendGrid}>
               {(["shard", "shardRole", "trait", "coin", "catalyst", "golden"] as ObjectKind[]).map((k) =>
                 <Legend key={k} kind={k} colors={colors} />,
               )}
             </View>
-            <Text style={[styles.legendHeading, { color: "#5BFFEA", marginTop: 12 }]}>UTILITY</Text>
+
+            <Text style={[styles.legendHeading, { color: "#5BFFEA", marginTop: 14 }]}>SLICE — UTILITY</Text>
             <View style={styles.legendGrid}>
               {(["comboOrb", "scoutIntel", "physio", "morale"] as ObjectKind[]).map((k) =>
                 <Legend key={k} kind={k} colors={colors} />,
               )}
             </View>
-            <Text style={[styles.legendHeading, { color: colors.destructive, marginTop: 12 }]}>HAZARDS — DODGE</Text>
+
+            <Text style={[styles.legendHeading, { color: colors.destructive, marginTop: 14 }]}>DODGE — HAZARDS</Text>
             <View style={styles.legendGrid}>
               {(["trap", "injury", "burnout", "fakeAgent"] as ObjectKind[]).map((k) =>
                 <Legend key={k} kind={k} colors={colors} />,
               )}
             </View>
           </View>
+        </ScrollView>
 
-          {state.scoutIntelRole && (
-            <View style={[styles.intelBanner, { borderColor: "#5BFFEA" }]}>
-              <Feather name="eye" size={14} color="#5BFFEA" />
-              <Text style={[styles.intelText, { color: colors.foreground }]}>
-                Scout Intel active — next shards target <Text style={{ color: "#5BFFEA", fontFamily: "Inter_700Bold" }}>{state.scoutIntelRole}</Text>
-              </Text>
-            </View>
-          )}
-
+        {/* Sticky CTA — always visible regardless of scroll position */}
+        <View
+          style={[
+            styles.stickyCta,
+            {
+              paddingBottom: insets.bottom + 12,
+              backgroundColor: colors.background + "F2",
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
           <Pressable
             onPress={startGame}
-            disabled={state.tickets <= 0}
+            disabled={!canStart}
             style={({ pressed }) => [
               styles.startBtn,
               {
-                backgroundColor: colors.primary,
-                opacity: pressed ? 0.85 : 1,
+                backgroundColor: canStart ? colors.primary : colors.muted,
+                opacity: pressed && canStart ? 0.85 : 1,
               },
             ]}
           >
-            <Feather name="play" size={18} color={colors.primaryForeground} />
-            <Text style={[styles.startText, { color: colors.primaryForeground }]}>
-              Start • Uses 1 ticket ({state.tickets} left)
+            <Icon3D name={canStart ? "play" : "lock"} size={20} />
+            <Text
+              style={[
+                styles.startText,
+                { color: canStart ? colors.primaryForeground : colors.mutedForeground },
+              ]}
+            >
+              {canStart
+                ? `Start Run  •  1 ticket  •  ${state.tickets} left`
+                : "No tickets — wait for refill"}
             </Text>
           </Pressable>
-        </ScrollView>
+        </View>
       </View>
     );
   }
@@ -727,7 +794,17 @@ export default function ScoutScreen() {
                 },
               ]}
             >
-              <Feather name={cfg.icon as any} size={isHazard ? 22 : o.kind === "golden" ? 24 : 22} color="#0A0E1A" />
+              <Text
+                pointerEvents="none"
+                allowFontScaling={false}
+                style={{
+                  fontSize: isHazard ? 28 : o.kind === "golden" ? 32 : 30,
+                  lineHeight: isHazard ? 32 : o.kind === "golden" ? 36 : 34,
+                  textAlign: "center",
+                }}
+              >
+                {cfg.emoji}
+              </Text>
             </View>
           );
         })}
@@ -746,11 +823,11 @@ function Legend({ kind, colors }: { kind: ObjectKind; colors: ReturnType<typeof 
         { backgroundColor: colors.card, borderColor: isHazard ? colors.destructive + "55" : colors.border },
       ]}
     >
-      <View style={[styles.legendOrb, { backgroundColor: c.color }]}>
-        <Feather name={c.icon as any} size={14} color="#0A0E1A" />
+      <View style={[styles.legendOrb, { backgroundColor: c.color + "33", borderColor: c.color }]}>
+        <Text allowFontScaling={false} style={styles.legendOrbEmoji}>{c.emoji}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.legendLabel, { color: colors.foreground }]}>{c.label}</Text>
+        <Text style={[styles.legendLabel, { color: colors.foreground }]} numberOfLines={1}>{c.label}</Text>
         <Text style={[styles.legendDesc, { color: colors.mutedForeground }]} numberOfLines={1}>{c.description}</Text>
       </View>
       <Text
@@ -809,26 +886,53 @@ function zeroCounts(): Record<ObjectKind, number> {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  closeBtn: {
-    position: "absolute",
-    top: 8,
-    right: 16,
-    padding: 8,
-    zIndex: 10,
+  closeBtnInline: {
+    padding: 6,
+    borderRadius: 999,
   },
-  introWrap: { padding: 20 },
+  introWrap: { paddingHorizontal: 20 },
+  introHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  introHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   introTitle: {
-    fontSize: 56,
+    fontSize: 36,
     fontWeight: "900",
-    letterSpacing: -2,
+    letterSpacing: -1.5,
     fontFamily: "Inter_700Bold",
   },
-  introSubtitle: { fontSize: 14, marginTop: 6, fontFamily: "Inter_500Medium" },
+  introTagline: { fontSize: 11, marginTop: 2, letterSpacing: 1.5, fontFamily: "Inter_600SemiBold" },
+  introHint: { fontSize: 12, marginTop: 14, fontFamily: "Inter_500Medium", lineHeight: 17 },
+  heroCard: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginTop: 4,
+  },
+  heroRow: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  heroLabel: { fontSize: 9, letterSpacing: 1.4, fontFamily: "Inter_700Bold", marginTop: 4 },
+  heroValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  heroDivider: { width: StyleSheet.hairlineWidth, marginVertical: 4 },
   legendSection: { marginTop: 18 },
-  legendHeading: { fontSize: 11, letterSpacing: 1.2, fontFamily: "Inter_700Bold", marginBottom: 6 },
-  legendGrid: { gap: 6 },
+  legendHeading: { fontSize: 10, letterSpacing: 1.4, fontFamily: "Inter_700Bold", marginBottom: 6 },
+  legendGrid: { gap: 5 },
   legendCard: {
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: "row",
@@ -836,31 +940,41 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   legendOrb: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
+  legendOrbEmoji: { fontSize: 18, lineHeight: 22, textAlign: "center" },
   legendLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   legendDesc: { fontSize: 10, marginTop: 1, fontFamily: "Inter_400Regular" },
-  legendPts: { fontSize: 12, fontFamily: "Inter_700Bold", minWidth: 40, textAlign: "right" },
+  legendPts: { fontSize: 12, fontFamily: "Inter_700Bold", minWidth: 44, textAlign: "right" },
   intelBanner: {
     flexDirection: "row",
     gap: 8,
     alignItems: "center",
-    marginTop: 14,
+    marginTop: 12,
     padding: 10,
     borderRadius: 10,
     borderWidth: 1,
   },
-  intelText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  intelText: { fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 },
+  stickyCta: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   startBtn: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 24,
     paddingVertical: 16,
     borderRadius: 14,
   },

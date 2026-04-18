@@ -11,25 +11,27 @@ export const OBJECT_CONFIG: Record<
     color: string;
     label: string;
     icon: string;
+    /** Color-emoji glyph rendered on the falling object (overrides the line-icon look). */
+    emoji: string;
     category: ObjectCategory;
     description: string;
     size?: number;
   }
 > = {
-  shard:      { points: 100, color: "#00FF88", label: "Shard",        icon: "octagon",        category: "positive", description: "Generic player shard" },
-  shardRole:  { points: 140, color: "#41D7FF", label: "Role Shard",   icon: "shield",         category: "positive", description: "Shard for a specific role" },
-  trait:      { points: 200, color: "#B36BFF", label: "Trait",        icon: "activity",       category: "positive", description: "Trait fragment" },
-  coin:       { points: 75,  color: "#FFD60A", label: "Coins",        icon: "circle",         category: "positive", description: "Cold hard cash" },
-  catalyst:   { points: 350, color: "#FF8A3D", label: "Catalyst",     icon: "aperture",       category: "positive", description: "Rare evolution material", size: 46 },
-  golden:     { points: 500, color: "#FFE066", label: "Golden Pack",  icon: "star",           category: "positive", description: "Jackpot — premium rewards", size: 44 },
-  comboOrb:   { points: 60,  color: "#9CFF66", label: "Combo Orb",    icon: "zap",            category: "utility",  description: "+2 instant combo" },
-  scoutIntel: { points: 150, color: "#5BFFEA", label: "Scout Intel",  icon: "eye",            category: "utility",  description: "Targets one role for next reward" },
-  physio:     { points: 120, color: "#A0F0FF", label: "Physio Kit",   icon: "plus-square",    category: "utility",  description: "Heals or shields next injury" },
-  morale:     { points: 110, color: "#FF8AC2", label: "Morale Boost", icon: "smile",          category: "utility",  description: "Next match composure boost" },
-  trap:       { points: -300, color: "#FF3B5C", label: "Red Card",    icon: "x",              category: "hazard",   description: "Score & combo loss" },
-  injury:     { points: -200, color: "#FF6B4A", label: "Injury",      icon: "alert-triangle", category: "hazard",   description: "May injure a lineup player" },
-  burnout:    { points: -180, color: "#C84BFF", label: "Burnout",     icon: "battery-charging", category: "hazard", description: "Reduces manager XP" },
-  fakeAgent:  { points: -120, color: "#FFA844", label: "Fake Agent",  icon: "user-x",         category: "hazard",   description: "One reward becomes essence" },
+  shard:      { points: 100, color: "#00FF88", label: "Shard",        icon: "octagon",        emoji: "⚽", category: "positive", description: "Generic player shard" },
+  shardRole:  { points: 140, color: "#41D7FF", label: "Role Shard",   icon: "shield",         emoji: "🛡️", category: "positive", description: "Shard for a specific role" },
+  trait:      { points: 200, color: "#B36BFF", label: "Trait",        icon: "activity",       emoji: "⚡", category: "positive", description: "Trait fragment" },
+  coin:       { points: 75,  color: "#FFD60A", label: "Coins",        icon: "circle",         emoji: "🪙", category: "positive", description: "Cold hard cash" },
+  catalyst:   { points: 350, color: "#FF8A3D", label: "Catalyst",     icon: "aperture",       emoji: "💎", category: "positive", description: "Rare evolution material", size: 46 },
+  golden:     { points: 500, color: "#FFE066", label: "Golden Pack",  icon: "star",           emoji: "🏆", category: "positive", description: "Jackpot — premium rewards", size: 44 },
+  comboOrb:   { points: 60,  color: "#9CFF66", label: "Combo Orb",    icon: "zap",            emoji: "🔥", category: "utility",  description: "+2 instant combo" },
+  scoutIntel: { points: 150, color: "#5BFFEA", label: "Scout Intel",  icon: "eye",            emoji: "🎯", category: "utility",  description: "Targets one role for next reward" },
+  physio:     { points: 120, color: "#A0F0FF", label: "Physio Kit",   icon: "plus-square",    emoji: "🩹", category: "utility",  description: "Heals or shields next injury" },
+  morale:     { points: 110, color: "#FF8AC2", label: "Morale Boost", icon: "smile",          emoji: "😊", category: "utility",  description: "Next match composure boost" },
+  trap:       { points: -300, color: "#FF3B5C", label: "Red Card",    icon: "x",              emoji: "🟥", category: "hazard",   description: "Score & combo loss" },
+  injury:     { points: -200, color: "#FF6B4A", label: "Injury",      icon: "alert-triangle", emoji: "🤕", category: "hazard",   description: "May injure a lineup player" },
+  burnout:    { points: -180, color: "#C84BFF", label: "Burnout",     icon: "battery-charging", emoji: "🪫", category: "hazard", description: "Reduces manager XP" },
+  fakeAgent:  { points: -120, color: "#FFA844", label: "Fake Agent",  icon: "user-x",         emoji: "🕵️", category: "hazard",   description: "One reward becomes essence" },
 };
 
 // Wave-based weights (seconds 0-20)

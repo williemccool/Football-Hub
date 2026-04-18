@@ -63,6 +63,16 @@ Storage keys (AsyncStorage): `slashfootball.canonical.v1`,
 `slashfootball.analytics.buffer.v1`, `slashfootball.errorLog.buffer.v1`.
 Legacy migration source is `slashfootball.state.v2`.
 
+### Icon system
+
+`components/Icon3D.tsx` — football-themed icons rendered with the platform's
+native color-emoji font (Apple Color Emoji on iOS, Noto Color Emoji on
+Android, Segoe UI / Twemoji fallbacks on web). No extra font assets shipped.
+Used by the tab bar (stadium / boot / trophy / calendar / shield), the slash
+arena's falling objects (each `OBJECT_CONFIG` entry now carries an `emoji`
+field), the slash intro's legend orbs and hero card, and the `HudPill` (which
+also accepts legacy Feather names through a small mapping table).
+
 UI surface added on top of core gameplay:
 
 - `components/SplashGate.tsx` — animated splash + sync status overlay

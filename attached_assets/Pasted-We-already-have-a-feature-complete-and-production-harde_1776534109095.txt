@@ -1,0 +1,300 @@
+We already have a feature-complete and production-hardened v1 candidate for Slash Football.
+
+Do NOT rebuild the app.
+Do NOT add major new game modes.
+Do NOT bloat the product.
+
+This phase is about getting the game ready for real external alpha / beta users, collecting actionable data, tuning the balance, and preparing for soft launch.
+
+Important constraint:
+Keep everything portable and vendor-neutral. Do not introduce lock-in to Replit or any single backend/analytics/error vendor. Maintain clean abstractions.
+
+# GOAL
+Make Slash Football ready for:
+- external alpha testing
+- balance tuning from real player behavior
+- soft launch preparation
+- release decision-making based on real metrics
+
+# FOCUS AREAS
+1. alpha / beta readiness
+2. instrumentation and KPI visibility
+3. economy and progression balancing tools
+4. player feedback collection
+5. experiment / feature flag readiness
+6. notifications / re-engagement groundwork
+7. launch operations readiness
+8. final polish for first real users
+
+# PART 1 — EXTERNAL ALPHA READINESS
+
+Prepare the app for a real closed alpha with external testers.
+
+## 1A. Tester-safe build behavior
+Add clear support for alpha testing:
+- app build clearly marked as alpha in settings/debug info
+- version/build number visible
+- environment label visible in debug/settings
+- safe tester reset tools in admin/dev mode only
+- no dangerous dev actions exposed to normal users
+
+## 1B. Tester profile support
+Add lightweight tester metadata support:
+- tester cohort / segment tag
+- install date
+- acquisition/source tag placeholder
+- internal vs external tester flag
+- country/region placeholder field if useful
+- build channel label
+
+## 1C. Feedback entry points
+Add structured in-app feedback entry points:
+- “Report an issue”
+- “Send feedback”
+- “Rate this session” after some matches or slash sessions
+- lightweight friction survey for early testers
+
+Keep these simple and non-intrusive.
+
+# PART 2 — ANALYTICS DASHBOARD READINESS
+
+We already added analytics in Prompt B. Now make them useful for product decisions.
+
+## 2A. Define KPI views and event groupings
+Create clear reporting groupings and internal docs for:
+- onboarding funnel
+- first-session funnel
+- slash engagement funnel
+- progression funnel
+- match/highlight funnel
+- retention funnel
+- monetization placeholder funnel
+- sync/error health
+
+## 2B. Track core KPI calculations
+Make sure the analytics layer and internal docs support calculation of:
+- D1 / D3 / D7 retention
+- session length
+- slash runs per DAU
+- average combo tier reached
+- player upgrade rate
+- match completion rate
+- highlight completion rate
+- league table open rate
+- daily objective claim rate
+- season completion rate
+- sync failure rate
+- crash/error rate
+
+## 2C. Add event quality checks
+Add validation so key analytics events are not silently missing or malformed.
+Add debug visibility for recent emitted events in dev mode.
+
+# PART 3 — ECONOMY AND BALANCE TUNING
+
+This is one of the most important parts of the phase.
+
+## 3A. Build better tuning controls
+Expand the admin/live-ops tooling so I can tune:
+- slash spawn frequency
+- object weight tables
+- combo reward multipliers
+- hazard probabilities
+- role shard drop rates
+- trait fragment drop rates
+- catalyst drop rates
+- golden pack rates
+- duplicate conversion values
+- upgrade costs
+- evolution thresholds
+- season rewards
+- daily objective rewards
+- manager XP curve
+- ticket refill speed
+- league reward outputs
+
+## 3B. Add economy health indicators
+Create internal dashboards or debug views for:
+- average coins per session
+- average essence earned
+- average shards earned per run
+- player unlock pace
+- upgrade pace
+- reward inflation risk
+- bottlenecks by progression band
+- hazard penalty impact
+- ticket scarcity pressure
+
+## 3C. Add safe experiment presets
+Create named balancing presets that can be switched in admin:
+- baseline
+- generous onboarding
+- high-risk slash
+- progression-friendly
+- conservative economy
+
+This is for testing, not for production abuse.
+
+# PART 4 — FTUE AND RETENTION OPTIMIZATION
+
+The game must be easier and more exciting for first-time users.
+
+## 4A. Improve first 10 minutes
+Refine the first-time user flow so players quickly experience:
+- first slash run
+- first reward high
+- first player unlock or meaningful upgrade
+- first lineup change
+- first match
+- first highlight reel
+- first league-table movement
+
+Minimize dead time and confusion.
+
+## 4B. Add retention hooks
+Add lightweight hooks such as:
+- “next ticket in X minutes”
+- “next matchday ready”
+- “you dropped in the table”
+- “upgrade available”
+- “daily objective almost complete”
+
+These can be surfaced in-app first. Notification plumbing can remain minimal if not fully implemented yet.
+
+## 4C. Improve reasons to return
+Make the home dashboard clearly communicate:
+- next immediate action
+- current progression goal
+- season urgency
+- unresolved squad weakness
+- available rewards
+
+# PART 5 — PLAYER FEEDBACK AND SENTIMENT
+
+Add structured systems to understand what real testers feel.
+
+## 5A. Session sentiment prompts
+After selected moments, show lightweight prompts:
+- Was slash mode fun?
+- Did this match feel fair?
+- Was the result understandable?
+- What was confusing?
+- Did you want to play another run?
+
+Keep them short and occasional.
+
+## 5B. Feedback categorization
+Structure feedback categories such as:
+- controls
+- slash fun
+- rewards
+- progression
+- match fairness
+- visuals
+- performance
+- bugs
+- confusion
+- other
+
+# PART 6 — FEATURE FLAGS / EXPERIMENT FRAMEWORK
+
+Add a simple portable experiment system.
+
+Support:
+- feature flags
+- cohort-based settings
+- configurable economy presets
+- tutorial on/off
+- hazard intensity variants
+- reward reveal variants
+- league-table exposure timing
+
+Keep this small, clean, and portable.
+
+# PART 7 — RE-ENGAGEMENT INFRASTRUCTURE
+
+Prepare the app for re-engagement loops.
+
+## 7A. In-app reminder states
+Implement in-app surfaces for:
+- tickets refilled
+- next match ready
+- season ending soon
+- objective reward ready
+- player ready to upgrade
+
+## 7B. Notification readiness
+Create a portable notification service abstraction and event triggers for future push support, even if full push delivery is not fully wired yet.
+
+Potential triggers:
+- tickets full
+- matchday available
+- daily objectives reset
+- season ending soon
+- position dropped in standings
+- new upgrade available
+
+# PART 8 — SOFT LAUNCH READINESS
+
+Prepare the codebase and docs for soft launch.
+
+## 8A. Release candidate docs
+Create/update docs for:
+- alpha test plan
+- beta/soft launch plan
+- KPI targets
+- balance review checklist
+- bug triage workflow
+- incident response checklist
+- go / no-go checklist
+
+## 8B. Operational readiness
+Make sure the app has:
+- clean environment separation
+- feature flags for risky changes
+- safe rollback mindset in architecture/docs
+- seeded test data or debug flows for QA
+- clear release notes template
+
+## 8C. Regional / cohort launch readiness
+Structure config so we can later soft launch by:
+- region
+- tester cohort
+- version
+- experiment group
+
+# PART 9 — FINAL UX / POLISH PASS FOR TESTERS
+
+Refine the product so it feels polished to first real users.
+
+Focus on:
+- cleaner copywriting
+- stronger reward drama
+- clearer progression messaging
+- fewer confusing states
+- better empty states
+- smoother transitions
+- more confidence in match and season outcomes
+
+Do not reinvent the visual identity. Polish what exists.
+
+# PART 10 — WHAT NOT TO DO
+
+Do not:
+- add new game modes
+- add paid monetization yet unless it is placeholder-only
+- add social systems yet
+- add unnecessary complexity
+- break the stable core loop
+
+# DEFINITION OF DONE
+
+This phase is done when:
+- the app is ready for external alpha testers
+- KPI tracking is actionable
+- balance can be tuned quickly through admin tools
+- tester feedback can be collected in-app
+- feature flags / experiments exist
+- retention hooks are clearer
+- launch docs and go/no-go checklists exist
+- the app feels polished enough for real user evaluation
