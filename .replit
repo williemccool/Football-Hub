@@ -40,13 +40,13 @@ waitForPort = 3000
 name = "Start Mobile"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "PORT=21394 pnpm --filter @workspace/slash-football run dev"
-waitForPort = 21394
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=21394 EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN:3000 pnpm --filter @workspace/slash-football run dev"
+waitForPort = 21394
 
 [agent]
 stack = "PNPM_WORKSPACE"
