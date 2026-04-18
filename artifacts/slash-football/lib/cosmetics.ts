@@ -36,6 +36,10 @@ export interface CosmeticItem {
   passOnly?: boolean;
   /** Optional limited-time offer end timestamp (ms-since-epoch). */
   limitedUntil?: number;
+  /** Surface this item in the shop's "Featured" rail. */
+  featured?: boolean;
+  /** Render as a teaser only — no purchase action. */
+  comingSoon?: boolean;
   tags?: string[];
 }
 
@@ -49,6 +53,8 @@ export interface CosmeticBundle {
   /** Saving vs buying contents individually, expressed as a percent. */
   savingsPct: number;
   limitedUntil?: number;
+  featured?: boolean;
+  comingSoon?: boolean;
 }
 
 export const CATEGORY_LABEL: Record<CosmeticCategory, string> = {
@@ -118,6 +124,7 @@ export const COSMETIC_CATALOG: CosmeticItem[] = [
     price: { currency: "gems", amount: 720 },
     accent: "#FFE066",
     tags: ["limited"],
+    featured: true,
   },
 
   // Crests
@@ -176,6 +183,17 @@ export const COSMETIC_CATALOG: CosmeticItem[] = [
     rarity: "legendary",
     price: { currency: "gems", amount: 640 },
     accent: "#B36BFF",
+    featured: true,
+  },
+  {
+    id: "pitch_winter_classic",
+    category: "pitch",
+    name: "Winter Classic",
+    description: "Snow-flecked broadcast theme. Coming next event.",
+    rarity: "epic",
+    price: { currency: "gems", amount: 0 },
+    accent: "#9FE9FF",
+    comingSoon: true,
   },
 
   // Celebrations
@@ -278,11 +296,12 @@ export const COSMETIC_BUNDLES: CosmeticBundle[] = [
     price: { currency: "gems", amount: 1480 },
     rarity: "legendary",
     savingsPct: 22,
+    featured: true,
   },
 ];
 
 export function listByCategory(c: CosmeticCategory): CosmeticItem[] {
-  return COSMETIC_CATALOG.filter((i) => i.category === c && !i.passOnly).sort(
+  return COSMETIC_CATALOG.filter((i) => i.category === c && !i.passOnly && !i.comingSoon).sort(
     (a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity],
   );
 }
@@ -293,6 +312,21 @@ export function getCosmetic(id: string): CosmeticItem | undefined {
 
 export function getBundle(id: string): CosmeticBundle | undefined {
   return COSMETIC_BUNDLES.find((b) => b.id === id);
+}
+
+/** Items flagged as featured (for shop hero rail). */
+export function listFeatured(): CosmeticItem[] {
+  return COSMETIC_CATALOG.filter((i) => i.featured && !i.passOnly && !i.comingSoon);
+}
+
+/** Items flagged as coming-soon teasers (no purchase). */
+export function listComingSoon(): CosmeticItem[] {
+  return COSMETIC_CATALOG.filter((i) => i.comingSoon && !i.passOnly);
+}
+
+/** Number of (purchasable) catalog items in a category — for progress UIs. */
+export function categoryTotal(c: CosmeticCategory): number {
+  return COSMETIC_CATALOG.filter((i) => i.category === c && !i.passOnly && !i.comingSoon).length;
 }
 
 /**

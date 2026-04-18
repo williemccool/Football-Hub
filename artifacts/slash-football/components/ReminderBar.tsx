@@ -7,9 +7,11 @@ import { useColors } from "@/hooks/useColors";
 import {
   analytics,
   notifications,
+  notificationPrefs,
   type NotificationPayload,
   type ReminderSnapshot,
 } from "@/services";
+import { categoryForTrigger } from "@/services/notificationPrefs";
 
 interface Props {
   snapshot: ReminderSnapshot;
@@ -35,7 +37,18 @@ export function ReminderBar({ snapshot }: Props) {
   const colors = useColors();
   const [, setTick] = useState(0);
 
-  const reminders = useMemo(() => notifications.computeReminders(snapshot), [snapshot]);
+  const [prefsRev, setPrefsRev] = useState(0);
+  useEffect(() => notificationPrefs.subscribe(() => setPrefsRev((r) => r + 1)), []);
+
+  const reminders = useMemo(
+    () =>
+      notifications
+        .computeReminders(snapshot)
+        .filter((r) => notificationPrefs.isEnabled(categoryForTrigger(r.trigger))),
+    // prefsRev intentionally re-runs the filter when toggles change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snapshot, prefsRev],
+  );
 
   useEffect(() => {
     for (const r of reminders) {

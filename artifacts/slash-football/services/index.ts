@@ -26,6 +26,14 @@ export {
   type NotificationPayload,
   type ReminderSnapshot,
 } from "./notifications";
+export { notificationPrefs, type NotificationCategory, type NotificationPrefs } from "./notificationPrefs";
+export {
+  purchases,
+  type PurchaseAdapter,
+  type PurchaseProductId,
+  type PurchaseResult,
+  type PurchaseStatus,
+} from "./purchases";
 export type {
   AuthService,
   DatabaseService,

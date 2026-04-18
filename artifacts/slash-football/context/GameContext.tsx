@@ -62,6 +62,16 @@ type Ctx = {
     | { ok: true; reward: PassReward }
     | { ok: false; reason: "locked" | "already_claimed" | "no_reward" | "premium_required" };
   purchasePassPremium: () => boolean;
+  /**
+   * Apply non-consumable entitlements returned by the purchase service's
+   * restore flow. Each id is matched by prefix to the matching grant:
+   *   bundle_<bundleId>      -> grant every cosmetic in the bundle
+   *   pass_premium_<season?> -> set seasonPass.premiumOwned = true
+   *   cosmetic_<cosmeticId>  -> grant the matching cosmetic id
+   * Unknown ids are ignored. Returns the number of cosmetics newly added
+   * plus 1 if pass premium was newly granted.
+   */
+  applyRestoredEntitlements: (productIds: string[]) => number;
 };
 
 const GameCtx = createContext<Ctx | null>(null);
@@ -912,6 +922,44 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return ok;
   }, [state.season.number]);
 
+  const applyRestoredEntitlements = useCallback((productIds: string[]): number => {
+    let granted = 0;
+    setState((s) => {
+      const ownedSet = new Set(s.cosmetics.owned);
+      let premium = s.seasonPass.premiumOwned;
+      for (const id of productIds) {
+        if (id.startsWith("bundle_")) {
+          const b = getBundle(id.slice("bundle_".length));
+          if (!b) continue;
+          for (const cid of b.itemIds) {
+            if (!ownedSet.has(cid)) {
+              ownedSet.add(cid);
+              granted += 1;
+            }
+          }
+        } else if (id.startsWith("pass_premium_")) {
+          if (!premium) {
+            premium = true;
+            granted += 1;
+          }
+        } else if (id.startsWith("cosmetic_")) {
+          const cid = id.slice("cosmetic_".length);
+          if (getCosmetic(cid) && !ownedSet.has(cid)) {
+            ownedSet.add(cid);
+            granted += 1;
+          }
+        }
+      }
+      if (granted === 0) return s;
+      return {
+        ...s,
+        cosmetics: { ...s.cosmetics, owned: [...ownedSet] },
+        seasonPass: { ...s.seasonPass, premiumOwned: premium },
+      };
+    });
+    return granted;
+  }, []);
+
   const startNewSeason = useCallback(() => {
     analytics.track("season_reward_claimed");
     setState((s) => {
@@ -958,6 +1006,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       equipCosmetic,
       claimPassReward,
       purchasePassPremium,
+      applyRestoredEntitlements,
     }),
     [
       state,
@@ -982,6 +1031,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       equipCosmetic,
       claimPassReward,
       purchasePassPremium,
+      applyRestoredEntitlements,
     ],
   );
 

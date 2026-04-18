@@ -22,6 +22,7 @@ import {
   flags,
   haptics,
   isRemoteConfigured,
+  purchases,
   sync,
   tester,
   type AccountInfo,
@@ -41,12 +42,13 @@ function fmt(ts: number | null | undefined) {
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { reset } = useGame();
+  const { reset, applyRestoredEntitlements } = useGame();
   const [hapticsOn, setHapticsOn] = useState(haptics.isEnabled());
   const [audioOn, setAudioOn] = useState(true);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [snap, setSnap] = useState<SyncSnapshot>(sync.snapshot());
   const [profile, setProfile] = useState<TesterProfile | null>(tester.current());
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     analytics.track("settings_viewed");
@@ -79,6 +81,26 @@ export default function SettingsScreen() {
         },
       ],
     );
+  };
+
+  const onRestore = async () => {
+    if (restoring) return;
+    setRestoring(true);
+    try {
+      const res = await purchases.restore();
+      const grantedInGame = applyRestoredEntitlements(res.productIds);
+      const total = Math.max(res.restored, grantedInGame);
+      Alert.alert(
+        "Restore complete",
+        total > 0
+          ? `Restored ${total} item${total === 1 ? "" : "s"}.`
+          : "Nothing to restore. Your owned content is already on this device.",
+      );
+    } catch (e) {
+      Alert.alert("Restore failed", e instanceof Error ? e.message : "Please try again later.");
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const cycleCohort = async () => {
@@ -127,6 +149,32 @@ export default function SettingsScreen() {
             onChange={setAudioOn}
             note="Coming soon"
           />
+        </Section>
+
+        <Section title="Notifications">
+          <ActionRow
+            icon="bell"
+            label="Notification settings"
+            color={colors.foreground}
+            onPress={() => router.push("/notifications-settings")}
+          />
+        </Section>
+
+        <Section title="Purchases">
+          <Pressable
+            onPress={onRestore}
+            disabled={restoring}
+            style={({ pressed }) => [
+              styles.actionRow,
+              { borderColor: colors.border, opacity: pressed || restoring ? 0.6 : 1 },
+            ]}
+          >
+            <Feather name="refresh-cw" size={14} color={colors.primary} />
+            <Text style={[styles.actionText, { color: colors.primary }]}>
+              {restoring ? "Restoring…" : "Restore purchases"}
+            </Text>
+          </Pressable>
+          <Row label="Billing" value={purchases.adapterName() === "store" ? "App store" : "Placeholder (pre-launch)"} />
         </Section>
 
         <Section title="Feedback">

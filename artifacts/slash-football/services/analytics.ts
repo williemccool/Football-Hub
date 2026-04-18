@@ -61,6 +61,13 @@ export type AnalyticsEvent =
   | "pass_reward_claimed"
   | "pass_premium_purchased"
   | "gems_balance_viewed"
+  | "purchase_attempted"
+  | "purchase_succeeded"
+  | "purchase_failed"
+  | "purchases_restored"
+  | "purchases_restore_failed"
+  | "notification_pref_changed"
+  | "notification_settings_viewed"
   // Funnel + content events
   | "club_created"
   | "shop_viewed"

@@ -13,11 +13,15 @@ import {
   type CosmeticCategory,
   type CosmeticItem,
   RARITY_COLOR,
+  categoryTotal,
   getCosmetic,
   listByCategory,
+  listComingSoon,
+  listFeatured,
   priceForPreset,
 } from "@/lib/cosmetics";
-import { analytics, flags, haptics } from "@/services";
+import { Alert } from "react-native";
+import { analytics, flags, haptics, purchases } from "@/services";
 
 type Tab = CosmeticCategory | "bundles";
 
@@ -37,7 +41,7 @@ type PricingPreset = (typeof PRICING_PRESETS)[number];
 export default function ShopScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { state, purchaseCosmetic, purchaseBundle, equipCosmetic } = useGame();
+  const { state, purchaseCosmetic, purchaseBundle, equipCosmetic, applyRestoredEntitlements } = useGame();
   const [tab, setTab] = useState<Tab>("kit");
   const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const top = Platform.OS === "web" ? 24 : insets.top + 12;
@@ -131,7 +135,27 @@ export default function ShopScreen() {
           <Feather name="chevron-down" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>Cosmetics Shop</Text>
-        <View style={{ width: 24 }} />
+        <Pressable
+          onPress={async () => {
+            haptics.fire("tap");
+            try {
+              const r = await purchases.restore();
+              const grantedInGame = applyRestoredEntitlements(r.productIds);
+              const total = Math.max(r.restored, grantedInGame);
+              Alert.alert(
+                "Restore complete",
+                total > 0
+                  ? `Restored ${total} item${total === 1 ? "" : "s"}.`
+                  : "Nothing to restore on this device.",
+              );
+            } catch (e) {
+              Alert.alert("Restore failed", e instanceof Error ? e.message : "Try again later.");
+            }
+          }}
+          hitSlop={10}
+        >
+          <Feather name="refresh-cw" size={18} color={colors.mutedForeground} />
+        </Pressable>
       </View>
 
       <View style={[styles.balanceRow]}>
@@ -183,6 +207,15 @@ export default function ShopScreen() {
       </ScrollView>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+        <FeaturedRail
+          pricingPreset={pricingPreset}
+          ownedSet={ownedSet}
+          onBuy={handleBuy}
+          onEquip={handleEquip}
+        />
+
+        <CategoryProgress category={tab} ownedSet={ownedSet} />
+
         {tab === "bundles" ? (
           COSMETIC_BUNDLES.map((b) => {
             const adjusted = priceForPreset(b.price, pricingPreset);
@@ -221,15 +254,18 @@ export default function ShopScreen() {
             );
           })
         ) : (
-          <CategoryList
-            category={tab}
-            ownedSet={ownedSet}
-            equippedId={equippedMap[tab]}
-            pricingPreset={pricingPreset}
-            onPreview={handlePreview}
-            onBuy={handleBuy}
-            onEquip={handleEquip}
-          />
+          <>
+            <CategoryList
+              category={tab}
+              ownedSet={ownedSet}
+              equippedId={equippedMap[tab]}
+              pricingPreset={pricingPreset}
+              onPreview={handlePreview}
+              onBuy={handleBuy}
+              onEquip={handleEquip}
+            />
+            <ComingSoonRail category={tab} />
+          </>
         )}
       </ScrollView>
 
@@ -412,6 +448,180 @@ function ItemCard({
         </View>
       </View>
     </Pressable>
+  );
+}
+
+function FeaturedRail({
+  pricingPreset,
+  ownedSet,
+  onBuy,
+  onEquip,
+}: {
+  pricingPreset: PricingPreset;
+  ownedSet: Set<string>;
+  onBuy: (item: CosmeticItem) => void;
+  onEquip: (item: CosmeticItem) => void;
+}) {
+  const colors = useColors();
+  const items = listFeatured();
+  if (items.length === 0) return null;
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Featured</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 10, paddingRight: 12 }}
+      >
+        {items.map((item) => {
+          const owned = ownedSet.has(item.id);
+          const adjusted = priceForPreset(item.price, pricingPreset);
+          const rc = RARITY_COLOR[item.rarity];
+          return (
+            <View
+              key={item.id}
+              style={[
+                {
+                  width: 200,
+                  borderWidth: 1,
+                  borderColor: rc,
+                  backgroundColor: colors.card,
+                  borderRadius: 14,
+                  padding: 12,
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={[item.accent + "55", rc + "10"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.thumb, { width: "100%", height: 70 }]}
+              >
+                <Feather name="star" size={22} color={rc} />
+              </LinearGradient>
+              <Text style={[styles.cardName, { color: colors.foreground, marginTop: 8 }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
+                {item.description}
+              </Text>
+              <View style={{ marginTop: 8, flexDirection: "row" }}>
+                {owned ? (
+                  <Pressable
+                    onPress={() => onEquip(item)}
+                    style={({ pressed }) => [
+                      styles.equipBtn,
+                      { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
+                    ]}
+                  >
+                    <Feather name="check" size={11} color="#0A0E1A" />
+                    <Text style={styles.equipText}>Equip</Text>
+                  </Pressable>
+                ) : (
+                  <PriceButton price={adjusted} label="Buy" onPress={() => onBuy(item)} />
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function CategoryProgress({
+  category,
+  ownedSet,
+}: {
+  category: Tab;
+  ownedSet: Set<string>;
+}) {
+  const colors = useColors();
+  if (category === "bundles") return null;
+  const total = categoryTotal(category);
+  if (total === 0) return null;
+  const owned = listByCategory(category).filter((i) => ownedSet.has(i.id) && !i.comingSoon).length;
+  const pct = Math.round((owned / total) * 100);
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 10,
+        paddingHorizontal: 4,
+      }}
+    >
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginBottom: 0 }]}>
+        Collection · {owned}/{total}
+      </Text>
+      <View
+        style={{
+          width: 110,
+          height: 6,
+          backgroundColor: colors.muted,
+          borderRadius: 999,
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            width: `${pct}%`,
+            height: "100%",
+            backgroundColor: colors.primary,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function ComingSoonRail({ category }: { category: Tab }) {
+  const colors = useColors();
+  if (category === "bundles") return null;
+  const items = listComingSoon().filter((i) => i.category === category);
+  if (items.length === 0) return null;
+  return (
+    <View style={{ marginTop: 10 }}>
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Coming soon</Text>
+      {items.map((item) => {
+        const rc = RARITY_COLOR[item.rarity];
+        return (
+          <View
+            key={item.id}
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                opacity: 0.85,
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={[item.accent + "33", rc + "10"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.thumb}
+            >
+              <Feather name="clock" size={22} color={rc} />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardName, { color: colors.foreground }]}>{item.name}</Text>
+              <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
+                {item.description}
+              </Text>
+              <View style={[styles.equippedChip, { borderColor: colors.border, alignSelf: "flex-start", marginTop: 6 }]}>
+                <Feather name="clock" size={11} color={colors.mutedForeground} />
+                <Text style={[styles.equippedText, { color: colors.mutedForeground }]}>
+                  Coming soon
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
