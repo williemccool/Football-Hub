@@ -14,7 +14,9 @@ import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import type { Role } from "@/lib/types";
 
-const FORMATION_433: { role: Role; x: number; y: number }[] = [
+type SlotPos = { role: Role; x: number; y: number };
+
+const FORMATION_433: SlotPos[] = [
   { role: "GK", x: 0.5, y: 0.92 },
   { role: "FB", x: 0.15, y: 0.75 },
   { role: "CB", x: 0.38, y: 0.78 },
@@ -28,6 +30,40 @@ const FORMATION_433: { role: Role; x: number; y: number }[] = [
   { role: "WG", x: 0.85, y: 0.25 },
 ];
 
+const FORMATION_442: SlotPos[] = [
+  { role: "GK", x: 0.5, y: 0.92 },
+  { role: "FB", x: 0.15, y: 0.75 },
+  { role: "CB", x: 0.38, y: 0.78 },
+  { role: "CB", x: 0.62, y: 0.78 },
+  { role: "FB", x: 0.85, y: 0.75 },
+  { role: "WG", x: 0.15, y: 0.5 },
+  { role: "CM", x: 0.38, y: 0.55 },
+  { role: "CM", x: 0.62, y: 0.55 },
+  { role: "WG", x: 0.85, y: 0.5 },
+  { role: "ST", x: 0.36, y: 0.2 },
+  { role: "ST", x: 0.64, y: 0.2 },
+];
+
+const FORMATION_352: SlotPos[] = [
+  { role: "GK", x: 0.5, y: 0.92 },
+  { role: "CB", x: 0.22, y: 0.78 },
+  { role: "CB", x: 0.5, y: 0.8 },
+  { role: "CB", x: 0.78, y: 0.78 },
+  { role: "FB", x: 0.1, y: 0.55 },
+  { role: "DM", x: 0.32, y: 0.55 },
+  { role: "CM", x: 0.5, y: 0.5 },
+  { role: "AM", x: 0.68, y: 0.55 },
+  { role: "FB", x: 0.9, y: 0.55 },
+  { role: "ST", x: 0.36, y: 0.2 },
+  { role: "ST", x: 0.64, y: 0.2 },
+];
+
+const FORMATIONS: Record<string, SlotPos[]> = {
+  "4-3-3": FORMATION_433,
+  "4-4-2": FORMATION_442,
+  "3-5-2": FORMATION_352,
+};
+
 export default function LineupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -36,6 +72,8 @@ export default function LineupScreen() {
 
   const pitchW = 360;
   const pitchH = 480;
+
+  const formationSlots = FORMATIONS[state.formation] ?? FORMATION_433;
 
   const lineupIds = new Set(state.lineup);
 
@@ -53,7 +91,12 @@ export default function LineupScreen() {
         <Pressable onPress={() => router.back()} style={styles.iconBtn}>
           <Feather name="chevron-down" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Lineup</Text>
+        <View style={{ alignItems: "center" }}>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Lineup</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
+            {state.formation} • {state.style}
+          </Text>
+        </View>
         <Pressable onPress={() => router.push("/tactics")} style={styles.iconBtn}>
           <Feather name="sliders" size={20} color={colors.foreground} />
         </Pressable>
@@ -70,7 +113,7 @@ export default function LineupScreen() {
           >
             <View style={[styles.pitchLine, { top: pitchH / 2 - 1 }]} />
             <View style={[styles.pitchCircle]} />
-            {FORMATION_433.map((slot, idx) => {
+            {formationSlots.map((slot, idx) => {
               const playerId = state.lineup[idx];
               const player = state.players.find((p) => p.id === playerId);
               const isActive = activeSlot === idx;
@@ -192,6 +235,7 @@ const styles = StyleSheet.create({
   },
   iconBtn: { padding: 8 },
   headerTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  headerSubtitle: { fontSize: 11, marginTop: 2, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
   pitchWrap: { alignItems: "center", paddingVertical: 16 },
   pitch: {
     borderRadius: 16,
