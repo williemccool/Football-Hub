@@ -18,8 +18,16 @@ import { useColors } from "@/hooks/useColors";
 import { useGame } from "@/context/GameContext";
 import { getOpponentForMatchday } from "@/lib/league";
 import { deriveHooks } from "@/lib/retentionHooks";
+import { PASS_TIERS } from "@/lib/seasonPass";
 import { analytics, cache, flags, type ReminderSnapshot } from "@/services";
-import { ONBOARDING_KEY } from "@/constants/storageKeys";
+import { DAILY_RESET_TAG_KEY, ONBOARDING_KEY } from "@/constants/storageKeys";
+
+function todayTag(): string {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    d.getUTCDate(),
+  ).padStart(2, "0")}`;
+}
 
 function formatMs(ms: number) {
   if (ms <= 0) return "Ready";
@@ -73,6 +81,46 @@ export default function HubScreen() {
     if (hooks.tablePosition > 0) prevTablePosRef.current = hooks.tablePosition;
   }, [hooks.tablePosition]);
 
+  const passClaimableTiers = useMemo(() => {
+    let n = 0;
+    const claimedFree = new Set(state.seasonPass.claimedFree);
+    const claimedPremium = new Set(state.seasonPass.claimedPremium);
+    for (const t of PASS_TIERS) {
+      if (state.seasonXp < t.xpRequired) break;
+      if (t.freeReward && !claimedFree.has(t.tier)) n++;
+      if (state.seasonPass.premiumOwned && t.premiumReward && !claimedPremium.has(t.tier)) n++;
+    }
+    return n;
+  }, [
+    state.seasonXp,
+    state.seasonPass.premiumOwned,
+    state.seasonPass.claimedFree,
+    state.seasonPass.claimedPremium,
+  ]);
+
+  // Daily reset detection: persist the last tag we surfaced and compare to
+  // today's tag every render tick (the 1s setInterval above already triggers
+  // re-renders, so date rollovers inside a session are caught).
+  const dailyResetTag = todayTag();
+  const [lastSeenResetTag, setLastSeenResetTag] = useState<string | null>(null);
+  useEffect(() => {
+    cache.read<string>(DAILY_RESET_TAG_KEY).then((v) => {
+      setLastSeenResetTag(typeof v === "string" ? v : dailyResetTag);
+      if (typeof v !== "string") {
+        // First ever boot: seed it so we don't fire a false "just reset".
+        cache.write(DAILY_RESET_TAG_KEY, dailyResetTag);
+      }
+    });
+  }, []);
+  const dailyObjectivesJustReset =
+    lastSeenResetTag !== null && lastSeenResetTag !== dailyResetTag;
+  useEffect(() => {
+    if (dailyObjectivesJustReset) {
+      cache.write(DAILY_RESET_TAG_KEY, dailyResetTag);
+      setLastSeenResetTag(dailyResetTag);
+    }
+  }, [dailyObjectivesJustReset, dailyResetTag]);
+
   const reminderSnapshot: ReminderSnapshot = {
     tickets: state.tickets,
     maxTickets: state.maxTickets,
@@ -86,6 +134,10 @@ export default function HubScreen() {
     affordableUpgrades: hooks.affordableUpgrades,
     tablePosition: hooks.tablePosition,
     tablePositionDelta: hooks.tablePositionDelta,
+    passClaimableTiers,
+    cosmeticEventActive: false,
+    dailyObjectivesJustReset,
+    dailyObjectivesResetTag: dailyResetTag,
   };
 
   const showNextAction = flags.bool("next_action_banner") && hooks.primary;
@@ -112,6 +164,18 @@ export default function HubScreen() {
           </View>
           <View style={styles.hudRow}>
             <HudPill icon="dollar-sign" value={state.coins} color={colors.accent} />
+            {flags.bool("shop_visible") && (
+              <Pressable
+                onPress={() => {
+                  analytics.track("gems_balance_viewed", { source: "hub" });
+                  router.push("/shop");
+                }}
+                hitSlop={6}
+                style={({ pressed }) => ({ marginLeft: 6, opacity: pressed ? 0.7 : 1 })}
+              >
+                <HudPill icon="hexagon" value={state.gems} color="#B36BFF" />
+              </Pressable>
+            )}
             <Pressable
               onPress={() => router.push("/settings")}
               hitSlop={10}

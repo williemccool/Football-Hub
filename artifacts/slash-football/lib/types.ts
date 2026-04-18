@@ -171,6 +171,22 @@ export interface TuningConfig {
   seasonChampionReward: number;
 }
 
+export interface CosmeticsState {
+  /** Owned cosmetic ids. */
+  owned: string[];
+  /** Equipped cosmetic id per category (kit, crest, …). */
+  equipped: { [category: string]: string };
+}
+
+export interface SeasonPassState {
+  /** True once the player owns this season's premium track. */
+  premiumOwned: boolean;
+  /** Tier numbers already claimed on the free track. */
+  claimedFree: number[];
+  /** Tier numbers already claimed on the premium track. */
+  claimedPremium: number[];
+}
+
 export interface GameState {
   manager: string;
   clubName: string;
@@ -178,6 +194,8 @@ export interface GameState {
   managerXp: number;
   seasonXp: number;
   coins: number;
+  /** Premium cosmetic-only currency. NEVER spent on progression. */
+  gems: number;
   essence: number;
   traitFragments: number;
   catalysts: number;
@@ -202,4 +220,6 @@ export interface GameState {
   bestSlashScore: number;
   totalSlashRuns: number;
   championships: number;
+  cosmetics: CosmeticsState;
+  seasonPass: SeasonPassState;
 }

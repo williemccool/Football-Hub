@@ -11,3 +11,4 @@ export const FEEDBACK_QUEUE_KEY = "slashfootball.feedback.queue.v1";
 export const SENTIMENT_LAST_KEY = "slashfootball.sentiment.lastShown.v1";
 export const NOTIFICATIONS_DISMISSED_KEY = "slashfootball.notifications.dismissed.v1";
 export const BALANCE_PRESET_KEY = "slashfootball.balance.preset.v1";
+export const DAILY_RESET_TAG_KEY = "slashfootball.daily.lastSeenTag.v1";

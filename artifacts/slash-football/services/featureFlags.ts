@@ -27,6 +27,15 @@ export type FlagId =
   // Engagement
   | "session_sentiment_prompt"
   | "next_action_banner"
+  | "reminder_bar_visible"
+  | "shop_cta_frequency" // variant: "off" | "low" | "default" | "high"
+  | "onboarding_speed" // variant: "full" | "compact"
+  // Monetization surfaces (kill-switches)
+  | "shop_visible"
+  | "pass_visible"
+  | "pass_reward_generosity" // variant: "lean" | "default" | "generous"
+  | "cosmetic_pricing_preset" // variant: "default" | "soft_launch" | "promo"
+  | "starter_reward_generosity" // variant: "lean" | "default" | "generous"
   // Live-ops
   | "ops_admin_visible";
 
@@ -90,6 +99,52 @@ const REGISTRY: Record<FlagId, FlagDefinition> = {
     type: "bool",
     default: __DEV__,
     description: "Expose live-ops/admin tools in settings.",
+  },
+  reminder_bar_visible: {
+    type: "bool",
+    default: true,
+    description: "Show the in-app reminder bar on the hub.",
+  },
+  shop_cta_frequency: {
+    type: "variant",
+    variants: ["off", "low", "default", "high"],
+    default: "default",
+    description:
+      "How often the hub surfaces a shop / cosmetics nudge. Off = never, low = once a day, default = once a session, high = every visit.",
+  },
+  onboarding_speed: {
+    type: "variant",
+    variants: ["full", "compact"],
+    default: "full",
+    description: "Length of the first-run onboarding (full=5 steps, compact=3 steps).",
+  },
+  shop_visible: {
+    type: "bool",
+    default: true,
+    description: "Kill-switch for the cosmetics shop screen and entry points.",
+  },
+  pass_visible: {
+    type: "bool",
+    default: true,
+    description: "Kill-switch for the season pass screen and entry points.",
+  },
+  pass_reward_generosity: {
+    type: "variant",
+    variants: ["lean", "default", "generous"],
+    default: "default",
+    description: "Scaling preset applied to season pass numeric rewards.",
+  },
+  cosmetic_pricing_preset: {
+    type: "variant",
+    variants: ["default", "soft_launch", "promo"],
+    default: "default",
+    description: "Pricing preset applied to cosmetic items in the shop.",
+  },
+  starter_reward_generosity: {
+    type: "variant",
+    variants: ["lean", "default", "generous"],
+    default: "default",
+    description: "First-run starter pack generosity.",
   },
 };
 

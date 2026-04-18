@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { getBundle, getCosmetic, priceForPreset } from "@/lib/cosmetics";
+import { applyGenerosity, PASS_TIERS, type PassReward } from "@/lib/seasonPass";
 import {
   applyResult,
   createSeason,
@@ -10,7 +12,7 @@ import {
 } from "@/lib/league";
 import { simulateMatch, nextOpponent } from "@/lib/matchSim";
 import { createInitialState, defaultTuning, makePlayer, TRAIT_LIST } from "@/lib/seedData";
-import { analytics, objectStorage, sync } from "@/services";
+import { analytics, flags, objectStorage, sync } from "@/services";
 import type {
   GameState,
   MatchResult,
@@ -45,6 +47,21 @@ type Ctx = {
   salvagePlayer: (id: string, mode?: SalvageMode) => boolean;
   updateTuning: (partial: Partial<TuningConfig>) => void;
   startNewSeason: () => void;
+  // Monetization actions
+  addGems: (amount: number, reason?: string) => void;
+  purchaseCosmetic: (
+    id: string,
+  ) => { ok: true } | { ok: false; reason: "already_owned" | "insufficient_funds" | "not_found" };
+  purchaseBundle: (
+    id: string,
+  ) =>
+    | { ok: true }
+    | { ok: false; reason: "insufficient_funds" | "not_found" | "already_owned" };
+  equipCosmetic: (id: string) => boolean;
+  claimPassReward: (tier: number, track: "free" | "premium") =>
+    | { ok: true; reward: PassReward }
+    | { ok: false; reason: "locked" | "already_claimed" | "no_reward" | "premium_required" };
+  purchasePassPremium: () => boolean;
 };
 
 const GameCtx = createContext<Ctx | null>(null);
@@ -88,6 +105,23 @@ function hydrateFromLoaded(loaded: GameState | null): GameState {
     bestSlashScore: loaded?.bestSlashScore ?? 0,
     totalSlashRuns: loaded?.totalSlashRuns ?? 0,
     championships: loaded?.championships ?? 0,
+    gems: typeof loaded?.gems === "number" ? loaded.gems : defaults.gems,
+    cosmetics: {
+      owned: Array.isArray(loaded?.cosmetics?.owned) ? loaded.cosmetics.owned : [],
+      equipped:
+        loaded?.cosmetics?.equipped && typeof loaded.cosmetics.equipped === "object"
+          ? loaded.cosmetics.equipped
+          : {},
+    },
+    seasonPass: {
+      premiumOwned: !!loaded?.seasonPass?.premiumOwned,
+      claimedFree: Array.isArray(loaded?.seasonPass?.claimedFree)
+        ? loaded.seasonPass.claimedFree
+        : [],
+      claimedPremium: Array.isArray(loaded?.seasonPass?.claimedPremium)
+        ? loaded.seasonPass.claimedPremium
+        : [],
+    },
   };
 }
 
@@ -635,6 +669,249 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addGems = useCallback((amount: number, reason?: string) => {
+    if (amount === 0) return;
+    setState((s) => ({ ...s, gems: Math.max(0, s.gems + amount) }));
+    if (reason) {
+      // Bookkept under the existing reward event so admin dashboards can group it.
+      analytics.track("slash_reward_claimed", {
+        coins: 0,
+        essence: 0,
+        shards: 0,
+        injuries: 0,
+        gems: amount,
+        gemReason: reason,
+      });
+    }
+  }, []);
+
+  const purchaseCosmetic = useCallback(
+    (id: string):
+      | { ok: true }
+      | { ok: false; reason: "already_owned" | "insufficient_funds" | "not_found" } => {
+      const item = getCosmetic(id);
+      if (!item || item.passOnly) {
+        analytics.track("cosmetic_purchase_attempted", {
+          id,
+          outcome: "not_found",
+        });
+        return { ok: false, reason: "not_found" };
+      }
+      const presetRaw = flags.variant("cosmetic_pricing_preset") as
+        | "default"
+        | "soft_launch"
+        | "promo";
+      const adjusted = priceForPreset(item.price, presetRaw ?? "default");
+      let result:
+        | { ok: true }
+        | { ok: false; reason: "already_owned" | "insufficient_funds" } = {
+        ok: false,
+        reason: "insufficient_funds",
+      };
+      setState((s) => {
+        if (s.cosmetics.owned.includes(id)) {
+          result = { ok: false, reason: "already_owned" };
+          return s;
+        }
+        const cur = adjusted.currency;
+        const balance = cur === "gems" ? s.gems : s.coins;
+        if (balance < adjusted.amount) {
+          result = { ok: false, reason: "insufficient_funds" };
+          return s;
+        }
+        result = { ok: true };
+        const next: GameState = {
+          ...s,
+          cosmetics: {
+            ...s.cosmetics,
+            owned: [...s.cosmetics.owned, id],
+          },
+        };
+        if (cur === "gems") next.gems = s.gems - adjusted.amount;
+        else next.coins = s.coins - adjusted.amount;
+        return next;
+      });
+      analytics.track("cosmetic_purchase_attempted", {
+        id,
+        category: item.category,
+        currency: adjusted.currency,
+        amount: adjusted.amount,
+        pricingPreset: presetRaw,
+        outcome: result.ok ? "success" : result.reason,
+      });
+      return result;
+    },
+    [],
+  );
+
+  const purchaseBundle = useCallback(
+    (id: string):
+      | { ok: true }
+      | { ok: false; reason: "insufficient_funds" | "not_found" | "already_owned" } => {
+      const bundle = getBundle(id);
+      if (!bundle) return { ok: false, reason: "not_found" };
+      const presetRaw = flags.variant("cosmetic_pricing_preset") as
+        | "default"
+        | "soft_launch"
+        | "promo";
+      const adjusted = priceForPreset(bundle.price, presetRaw ?? "default");
+      let result:
+        | { ok: true }
+        | { ok: false; reason: "insufficient_funds" | "already_owned" } = {
+        ok: false,
+        reason: "insufficient_funds",
+      };
+      setState((s) => {
+        const ownedSet = new Set(s.cosmetics.owned);
+        const fullyOwned = bundle.itemIds.every((iid) => ownedSet.has(iid));
+        if (fullyOwned) {
+          result = { ok: false, reason: "already_owned" };
+          return s;
+        }
+        const cur = adjusted.currency;
+        const balance = cur === "gems" ? s.gems : s.coins;
+        if (balance < adjusted.amount) {
+          result = { ok: false, reason: "insufficient_funds" };
+          return s;
+        }
+        result = { ok: true };
+        for (const itemId of bundle.itemIds) ownedSet.add(itemId);
+        const next: GameState = {
+          ...s,
+          cosmetics: { ...s.cosmetics, owned: [...ownedSet] },
+        };
+        if (cur === "gems") next.gems = s.gems - adjusted.amount;
+        else next.coins = s.coins - adjusted.amount;
+        return next;
+      });
+      analytics.track("cosmetic_purchase_attempted", {
+        id,
+        bundle: true,
+        currency: adjusted.currency,
+        amount: adjusted.amount,
+        pricingPreset: presetRaw,
+        outcome: result.ok ? "success" : result.reason,
+      });
+      return result;
+    },
+    [],
+  );
+
+  const equipCosmetic = useCallback((id: string): boolean => {
+    const item = getCosmetic(id);
+    if (!item) return false;
+    let ok = false;
+    setState((s) => {
+      if (!s.cosmetics.owned.includes(id)) return s;
+      ok = true;
+      return {
+        ...s,
+        cosmetics: {
+          ...s.cosmetics,
+          equipped: { ...s.cosmetics.equipped, [item.category]: id },
+        },
+      };
+    });
+    if (ok) analytics.track("cosmetic_equipped", { id, category: item.category });
+    return ok;
+  }, []);
+
+  const claimPassReward = useCallback(
+    (tier: number, track: "free" | "premium"):
+      | { ok: true; reward: PassReward }
+      | { ok: false; reason: "locked" | "already_claimed" | "no_reward" | "premium_required" } => {
+      const def = PASS_TIERS[tier - 1];
+      if (!def) return { ok: false, reason: "no_reward" };
+      const rawReward = track === "free" ? def.freeReward : def.premiumReward;
+      if (!rawReward) return { ok: false, reason: "no_reward" };
+      const generosity = (flags.variant("pass_reward_generosity") as
+        | "lean"
+        | "default"
+        | "generous") ?? "default";
+      const reward = applyGenerosity(rawReward, generosity);
+      let outcome:
+        | { ok: true; reward: PassReward }
+        | { ok: false; reason: "locked" | "already_claimed" | "premium_required" } = {
+        ok: false,
+        reason: "locked",
+      };
+      setState((s) => {
+        if (s.seasonXp < def.xpRequired) {
+          outcome = { ok: false, reason: "locked" };
+          return s;
+        }
+        if (track === "premium" && !s.seasonPass.premiumOwned) {
+          outcome = { ok: false, reason: "premium_required" };
+          return s;
+        }
+        const claimed =
+          track === "free" ? s.seasonPass.claimedFree : s.seasonPass.claimedPremium;
+        if (claimed.includes(tier)) {
+          outcome = { ok: false, reason: "already_claimed" };
+          return s;
+        }
+        const next = clone(s) as GameState;
+        switch (reward.kind) {
+          case "coins":
+            next.coins += reward.amount ?? 0;
+            break;
+          case "gems":
+            next.gems += reward.amount ?? 0;
+            break;
+          case "essence":
+            next.essence += reward.amount ?? 0;
+            break;
+          case "ticket":
+            next.tickets = Math.min(
+              next.maxTickets,
+              next.tickets + (reward.amount ?? 0),
+            );
+            break;
+          case "trait_fragment":
+            next.traitFragments += reward.amount ?? 0;
+            break;
+          case "catalyst":
+            next.catalysts += reward.amount ?? 0;
+            break;
+          case "cosmetic":
+            if (reward.cosmeticId && !next.cosmetics.owned.includes(reward.cosmeticId)) {
+              next.cosmetics.owned.push(reward.cosmeticId);
+            }
+            break;
+        }
+        if (track === "free") {
+          next.seasonPass.claimedFree = [...next.seasonPass.claimedFree, tier];
+        } else {
+          next.seasonPass.claimedPremium = [...next.seasonPass.claimedPremium, tier];
+        }
+        outcome = { ok: true, reward };
+        return next;
+      });
+      if (outcome.ok) {
+        analytics.track("pass_reward_claimed", {
+          tier,
+          track,
+          kind: reward.kind,
+          amount: reward.amount,
+          cosmeticId: reward.cosmeticId,
+        });
+      }
+      return outcome;
+    },
+    [],
+  );
+
+  const purchasePassPremium = useCallback((): boolean => {
+    let ok = false;
+    setState((s) => {
+      if (s.seasonPass.premiumOwned) return s;
+      ok = true;
+      return { ...s, seasonPass: { ...s.seasonPass, premiumOwned: true } };
+    });
+    if (ok) analytics.track("pass_premium_purchased", { season: state.season.number });
+    return ok;
+  }, [state.season.number]);
+
   const startNewSeason = useCallback(() => {
     analytics.track("season_reward_claimed");
     setState((s) => {
@@ -644,6 +921,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const opp = getOpponentForMatchday(newSeason);
       if (opp) next.upcomingOpponent = { name: opp.name, rating: opp.rating };
       next.seasonXp = 0;
+      // Pass progress resets each season; premium ownership is per-season.
+      next.seasonPass = { premiumOwned: false, claimedFree: [], claimedPremium: [] };
       // Reset daily missions
       next.dailyMissions = next.dailyMissions.map((m) => ({
         ...m,
@@ -673,6 +952,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       salvagePlayer,
       updateTuning,
       startNewSeason,
+      addGems,
+      purchaseCosmetic,
+      purchaseBundle,
+      equipCosmetic,
+      claimPassReward,
+      purchasePassPremium,
     }),
     [
       state,
@@ -691,6 +976,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       salvagePlayer,
       updateTuning,
       startNewSeason,
+      addGems,
+      purchaseCosmetic,
+      purchaseBundle,
+      equipCosmetic,
+      claimPassReward,
+      purchasePassPremium,
     ],
   );
 

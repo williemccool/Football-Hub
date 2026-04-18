@@ -1,62 +1,128 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
-import { analytics } from "@/services";
+import { useGame } from "@/context/GameContext";
+import {
+  CATEGORY_LABEL,
+  COSMETIC_BUNDLES,
+  type CosmeticCategory,
+  type CosmeticItem,
+  RARITY_COLOR,
+  getCosmetic,
+  listByCategory,
+  priceForPreset,
+} from "@/lib/cosmetics";
+import { analytics, flags, haptics } from "@/services";
 
-type Tab = "kits" | "crests" | "pitch" | "celebrations";
-
-interface Item {
-  id: string;
-  name: string;
-  desc: string;
-  rarity: "Common" | "Rare" | "Epic" | "Legendary";
-}
-
-const CATALOG: Record<Tab, Item[]> = {
-  kits: [
-    { id: "k1", name: "Aurora Home", desc: "Neon-stitched home kit", rarity: "Rare" },
-    { id: "k2", name: "Midnight Away", desc: "Stealth carbon weave", rarity: "Epic" },
-    { id: "k3", name: "Solar Flare 3rd", desc: "Limited season drop", rarity: "Legendary" },
-    { id: "k4", name: "Classic Stripes", desc: "Heritage cotton revival", rarity: "Common" },
-  ],
-  crests: [
-    { id: "c1", name: "Bolt Sigil", desc: "Animated lightning crest", rarity: "Rare" },
-    { id: "c2", name: "Phoenix Mark", desc: "Foil-pressed crest", rarity: "Epic" },
-    { id: "c3", name: "Stadium Rose", desc: "Hand-drawn heritage", rarity: "Common" },
-  ],
-  pitch: [
-    { id: "p1", name: "Stadium Lights", desc: "Floodlit broadcast theme", rarity: "Rare" },
-    { id: "p2", name: "Holographic Pitch", desc: "Animated grid overlay", rarity: "Legendary" },
-    { id: "p3", name: "Sunset Match", desc: "Warm tone broadcast", rarity: "Epic" },
-  ],
-  celebrations: [
-    { id: "g1", name: "Lightning Strike", desc: "Bolt FX on goal", rarity: "Rare" },
-    { id: "g2", name: "Confetti Burst", desc: "Stadium-wide cascade", rarity: "Epic" },
-    { id: "g3", name: "Fireworks Show", desc: "End-of-match payoff", rarity: "Legendary" },
-  ],
-};
+type Tab = CosmeticCategory | "bundles";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentProps<typeof Feather>["name"] }[] = [
-  { id: "kits", label: "Kits", icon: "user" },
-  { id: "crests", label: "Crests", icon: "shield" },
+  { id: "kit", label: "Kits", icon: "user" },
+  { id: "crest", label: "Crests", icon: "shield" },
   { id: "pitch", label: "Pitch", icon: "grid" },
-  { id: "celebrations", label: "FX", icon: "star" },
+  { id: "celebration", label: "FX", icon: "star" },
+  { id: "uiTheme", label: "Themes", icon: "droplet" },
+  { id: "banner", label: "Banners", icon: "flag" },
+  { id: "bundles", label: "Bundles", icon: "package" },
 ];
+
+const PRICING_PRESETS = ["default", "soft_launch", "promo"] as const;
+type PricingPreset = (typeof PRICING_PRESETS)[number];
 
 export default function ShopScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<Tab>("kits");
+  const { state, purchaseCosmetic, purchaseBundle, equipCosmetic } = useGame();
+  const [tab, setTab] = useState<Tab>("kit");
+  const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const top = Platform.OS === "web" ? 24 : insets.top + 12;
 
+  const shopVisible = flags.bool("shop_visible");
+  const pricingPresetRaw = flags.variant("cosmetic_pricing_preset");
+  const pricingPreset: PricingPreset = (PRICING_PRESETS as readonly string[]).includes(
+    pricingPresetRaw,
+  )
+    ? (pricingPresetRaw as PricingPreset)
+    : "default";
+
   useEffect(() => {
-    analytics.track("shop_viewed");
-  }, []);
+    analytics.track("shop_viewed", { pricingPreset });
+  }, [pricingPreset]);
+
+  const ownedSet = useMemo(() => new Set(state.cosmetics.owned), [state.cosmetics.owned]);
+  const equippedMap = state.cosmetics.equipped;
+
+  if (!shopVisible) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: top }]}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={10}>
+            <Feather name="chevron-down" size={24} color={colors.foreground} />
+          </Pressable>
+          <Text style={[styles.title, { color: colors.foreground }]}>Cosmetics</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={[styles.emptyWrap]}>
+          <Feather name="lock" size={36} color={colors.mutedForeground} />
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Shop unavailable</Text>
+          <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
+            The cosmetics shop is currently turned off. Check back soon.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  function showToast(kind: "ok" | "err", text: string) {
+    setToast({ kind, text });
+    setTimeout(() => setToast(null), 1800);
+  }
+
+  function handlePreview(item: CosmeticItem) {
+    haptics.fire("tap");
+    analytics.track("cosmetic_previewed", { id: item.id, category: item.category });
+  }
+
+  function handleBuy(item: CosmeticItem) {
+    haptics.fire("tap");
+    const result = purchaseCosmetic(item.id);
+    if (result.ok) {
+      showToast("ok", `${item.name} added to your locker.`);
+    } else if (result.reason === "already_owned") {
+      showToast("err", "Already owned.");
+    } else if (result.reason === "insufficient_funds") {
+      showToast(
+        "err",
+        item.price.currency === "gems" ? "Not enough gems." : "Not enough coins.",
+      );
+    }
+  }
+
+  function handleEquip(item: CosmeticItem) {
+    haptics.fire("tap");
+    const ok = equipCosmetic(item.id);
+    if (ok) showToast("ok", `${item.name} equipped.`);
+  }
+
+  function handleBundleBuy(bundleId: string) {
+    haptics.fire("tap");
+    const bundle = COSMETIC_BUNDLES.find((b) => b.id === bundleId);
+    if (!bundle) return;
+    const result = purchaseBundle(bundleId);
+    if (result.ok) showToast("ok", `${bundle.name} unlocked.`);
+    else if (result.reason === "insufficient_funds")
+      showToast(
+        "err",
+        bundle.price.currency === "gems" ? "Not enough gems." : "Not enough coins.",
+      );
+    else if (result.reason === "already_owned")
+      showToast("err", "You already own every item in this bundle.");
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -68,13 +134,28 @@ export default function ShopScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.tabRow}>
+      <View style={[styles.balanceRow]}>
+        <Balance icon="dollar-sign" label="COINS" value={state.coins} tone={colors.accent} />
+        <Balance icon="hexagon" label="GEMS" value={state.gems} tone="#B36BFF" />
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabRow}
+      >
         {TABS.map((t) => {
           const active = t.id === tab;
           return (
             <Pressable
               key={t.id}
-              onPress={() => setTab(t.id)}
+              onPress={() => {
+                setTab(t.id);
+                if (t.id === "bundles") {
+                  for (const b of COSMETIC_BUNDLES)
+                    analytics.track("bundle_viewed", { id: b.id });
+                }
+              }}
               style={[
                 styles.tab,
                 {
@@ -85,7 +166,7 @@ export default function ShopScreen() {
             >
               <Feather
                 name={t.icon}
-                size={14}
+                size={13}
                 color={active ? colors.primary : colors.mutedForeground}
               />
               <Text
@@ -99,75 +180,268 @@ export default function ShopScreen() {
             </Pressable>
           );
         })}
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
-        <LinearGradient
-          colors={[colors.primary + "33", "transparent"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.banner, { borderColor: colors.border }]}
-        >
-          <Feather name="gift" size={18} color={colors.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.bannerTitle, { color: colors.foreground }]}>
-              Cosmetics drop coming soon
-            </Text>
-            <Text style={[styles.bannerSub, { color: colors.mutedForeground }]}>
-              Browse the lineup. No monetization yet — preview only.
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {CATALOG[tab].map((item) => (
-          <ItemCard key={item.id} item={item} />
-        ))}
       </ScrollView>
+
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+        {tab === "bundles" ? (
+          COSMETIC_BUNDLES.map((b) => {
+            const adjusted = priceForPreset(b.price, pricingPreset);
+            const containedNames = b.itemIds
+              .map((id) => getCosmetic(id)?.name ?? "—")
+              .join(" + ");
+            return (
+              <View
+                key={b.id}
+                style={[
+                  styles.bundleCard,
+                  { backgroundColor: colors.card, borderColor: RARITY_COLOR[b.rarity] },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.bundleName, { color: colors.foreground }]}>{b.name}</Text>
+                  <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>
+                    {b.description}
+                  </Text>
+                  <Text style={[styles.bundleContains, { color: colors.mutedForeground }]}>
+                    Includes: {containedNames}
+                  </Text>
+                  <View style={[styles.savingsChip, { borderColor: colors.primary }]}>
+                    <Feather name="trending-down" size={11} color={colors.primary} />
+                    <Text style={[styles.savingsText, { color: colors.primary }]}>
+                      Save {b.savingsPct}%
+                    </Text>
+                  </View>
+                </View>
+                <PriceButton
+                  price={adjusted}
+                  label="Buy bundle"
+                  onPress={() => handleBundleBuy(b.id)}
+                />
+              </View>
+            );
+          })
+        ) : (
+          <CategoryList
+            category={tab}
+            ownedSet={ownedSet}
+            equippedId={equippedMap[tab]}
+            pricingPreset={pricingPreset}
+            onPreview={handlePreview}
+            onBuy={handleBuy}
+            onEquip={handleEquip}
+          />
+        )}
+      </ScrollView>
+
+      {toast && (
+        <View
+          style={[
+            styles.toast,
+            {
+              borderColor: toast.kind === "ok" ? colors.primary : colors.destructive,
+              backgroundColor: colors.card,
+              bottom: insets.bottom + 24,
+            },
+          ]}
+        >
+          <Feather
+            name={toast.kind === "ok" ? "check-circle" : "alert-circle"}
+            size={14}
+            color={toast.kind === "ok" ? colors.primary : colors.destructive}
+          />
+          <Text style={[styles.toastText, { color: colors.foreground }]}>{toast.text}</Text>
+        </View>
+      )}
     </View>
   );
 }
 
-function rarityColor(r: Item["rarity"]) {
-  if (r === "Legendary") return "#FFE066";
-  if (r === "Epic") return "#B36BFF";
-  if (r === "Rare") return "#41D7FF";
-  return "#8E8E93";
+function Balance({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  label: string;
+  value: number;
+  tone: string;
+}) {
+  const colors = useColors();
+  return (
+    <View style={[styles.balancePill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Feather name={icon} size={13} color={tone} />
+      <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[styles.balanceValue, { color: colors.foreground }]}>
+        {value.toLocaleString()}
+      </Text>
+    </View>
+  );
 }
 
-function ItemCard({ item }: { item: Item }) {
+function CategoryList({
+  category,
+  ownedSet,
+  equippedId,
+  pricingPreset,
+  onPreview,
+  onBuy,
+  onEquip,
+}: {
+  category: CosmeticCategory;
+  ownedSet: Set<string>;
+  equippedId: string | undefined;
+  pricingPreset: PricingPreset;
+  onPreview: (item: CosmeticItem) => void;
+  onBuy: (item: CosmeticItem) => void;
+  onEquip: (item: CosmeticItem) => void;
+}) {
   const colors = useColors();
-  const rc = rarityColor(item.rarity);
+  const items = listByCategory(category);
+  if (items.length === 0) {
+    return (
+      <View style={[styles.emptyWrap]}>
+        <Feather name="inbox" size={28} color={colors.mutedForeground} />
+        <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
+          No {CATEGORY_LABEL[category].toLowerCase()} available yet.
+        </Text>
+      </View>
+    );
+  }
+  const ownedCount = items.filter((i) => ownedSet.has(i.id)).length;
+
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
-      <LinearGradient
-        colors={[rc + "33", rc + "08"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.thumb}
+    <>
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+        {CATEGORY_LABEL[category]} • {ownedCount}/{items.length} owned
+      </Text>
+      {items.map((item) => {
+        const owned = ownedSet.has(item.id);
+        const equipped = equippedId === item.id;
+        const adjusted = priceForPreset(item.price, pricingPreset);
+        return (
+          <ItemCard
+            key={item.id}
+            item={item}
+            adjustedPrice={adjusted}
+            owned={owned}
+            equipped={equipped}
+            onPreview={() => onPreview(item)}
+            onBuy={() => onBuy(item)}
+            onEquip={() => onEquip(item)}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function ItemCard({
+  item,
+  adjustedPrice,
+  owned,
+  equipped,
+  onPreview,
+  onBuy,
+  onEquip,
+}: {
+  item: CosmeticItem;
+  adjustedPrice: CosmeticItem["price"];
+  owned: boolean;
+  equipped: boolean;
+  onPreview: () => void;
+  onBuy: () => void;
+  onEquip: () => void;
+}) {
+  const colors = useColors();
+  const rc = RARITY_COLOR[item.rarity];
+  return (
+    <Pressable onPress={onPreview} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.card,
+            borderColor: equipped ? colors.primary : colors.border,
+          },
+        ]}
       >
-        <Feather name="package" size={26} color={rc} />
-      </LinearGradient>
-      <View style={{ flex: 1 }}>
-        <View style={styles.cardTopRow}>
-          <Text style={[styles.cardName, { color: colors.foreground }]}>{item.name}</Text>
-          <View style={[styles.rarityChip, { borderColor: rc }]}>
-            <Text style={[styles.rarityText, { color: rc }]}>{item.rarity}</Text>
+        <LinearGradient
+          colors={[item.accent + "55", rc + "10"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.thumb}
+        >
+          <Feather name="package" size={26} color={rc} />
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <View style={styles.cardTopRow}>
+            <Text style={[styles.cardName, { color: colors.foreground }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <View style={[styles.rarityChip, { borderColor: rc }]}>
+              <Text style={[styles.rarityText, { color: rc }]}>
+                {item.rarity.toUpperCase()}
+              </Text>
+            </View>
           </View>
-        </View>
-        <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>{item.desc}</Text>
-        <View style={styles.cardBtnRow}>
-          <View style={[styles.soonBtn, { borderColor: colors.border }]}>
-            <Feather name="clock" size={11} color={colors.mutedForeground} />
-            <Text style={[styles.soonText, { color: colors.mutedForeground }]}>Coming Soon</Text>
+          <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
+            {item.description}
+          </Text>
+          <View style={styles.cardBtnRow}>
+            {equipped ? (
+              <View style={[styles.equippedChip, { borderColor: colors.primary }]}>
+                <Feather name="check" size={11} color={colors.primary} />
+                <Text style={[styles.equippedText, { color: colors.primary }]}>Equipped</Text>
+              </View>
+            ) : owned ? (
+              <Pressable
+                onPress={onEquip}
+                style={({ pressed }) => [
+                  styles.equipBtn,
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
+                ]}
+              >
+                <Feather name="check" size={11} color="#0A0E1A" />
+                <Text style={styles.equipText}>Equip</Text>
+              </Pressable>
+            ) : (
+              <PriceButton price={adjustedPrice} label="Buy" onPress={onBuy} />
+            )}
           </View>
         </View>
       </View>
-    </View>
+    </Pressable>
+  );
+}
+
+function PriceButton({
+  price,
+  label,
+  onPress,
+}: {
+  price: CosmeticItem["price"];
+  label: string;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  const isGems = price.currency === "gems";
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.priceBtn,
+        {
+          backgroundColor: isGems ? "#B36BFF" : colors.primary,
+          opacity: pressed ? 0.9 : 1,
+        },
+      ]}
+    >
+      <Feather name={isGems ? "hexagon" : "dollar-sign"} size={11} color="#0A0E1A" />
+      <Text style={styles.priceText}>
+        {price.amount.toLocaleString()} {label ? `· ${label}` : ""}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -181,35 +455,49 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  tabRow: {
+  balanceRow: {
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
     paddingHorizontal: 16,
     marginTop: 4,
     marginBottom: 8,
   },
-  tab: {
-    flex: 1,
+  balancePill: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    flex: 1,
+  },
+  balanceLabel: { fontSize: 9, letterSpacing: 0.6, fontFamily: "Inter_600SemiBold" },
+  balanceValue: { fontSize: 13, fontFamily: "Inter_700Bold", marginLeft: "auto" },
+  tabRow: {
+    paddingHorizontal: 12,
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 8,
+    flexDirection: "row",
+  },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
     paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
   },
   tabLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 14,
+  sectionLabel: {
+    fontSize: 10,
+    letterSpacing: 0.6,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 8,
+    textTransform: "uppercase",
   },
-  bannerTitle: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  bannerSub: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 2 },
   card: {
     flexDirection: "row",
     gap: 12,
@@ -218,6 +506,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
   },
+  bundleCard: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  bundleName: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  bundleContains: {
+    fontSize: 11,
+    marginTop: 6,
+    fontFamily: "Inter_500Medium",
+  },
+  savingsChip: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  savingsText: { fontSize: 10, fontFamily: "Inter_700Bold" },
   thumb: {
     width: 64,
     height: 64,
@@ -225,20 +540,59 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cardTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  cardTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   cardName: { fontSize: 14, fontFamily: "Inter_700Bold", flex: 1 },
   rarityChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
   rarityText: { fontSize: 9, letterSpacing: 0.6, fontFamily: "Inter_600SemiBold" },
   cardDesc: { fontSize: 11, marginTop: 2, fontFamily: "Inter_400Regular" },
-  cardBtnRow: { flexDirection: "row", marginTop: 6 },
-  soonBtn: {
+  cardBtnRow: { flexDirection: "row", marginTop: 8, gap: 6 },
+  equipBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  equipText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0A0E1A" },
+  equippedChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
   },
-  soonText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  equippedText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  priceBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  priceText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0A0E1A" },
+  emptyWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: 32,
+  },
+  emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  emptyBody: { fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "center", maxWidth: 260 },
+  toast: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  toastText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 });

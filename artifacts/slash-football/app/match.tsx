@@ -15,6 +15,7 @@ import { SentimentPrompt } from "@/components/SentimentPrompt";
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import type { MatchEvent, MatchResult } from "@/lib/types";
+import { analytics } from "@/services";
 
 export default function MatchScreen() {
   const colors = useColors();
@@ -47,6 +48,11 @@ export default function MatchScreen() {
 
   const startPlayback = () => {
     if (!result) return;
+    analytics.track("highlight_view_started", {
+      matchday: result.matchday,
+      opponent: result.opponent,
+      mode: "play",
+    });
     setPlaying(true);
     setShownEvents([]);
     setHomeScore(0);
@@ -56,6 +62,13 @@ export default function MatchScreen() {
     let lastMinute = 0;
     const tick = () => {
       if (i >= result.events.length) {
+        analytics.track("highlight_view_completed", {
+          matchday: result.matchday,
+          opponent: result.opponent,
+          mode: "watched",
+          homeScore: result.homeScore,
+          awayScore: result.awayScore,
+        });
         setDone(true);
         setPlaying(false);
         setCurrentMinute(90);
@@ -85,6 +98,13 @@ export default function MatchScreen() {
 
   const skipToEnd = () => {
     if (!result) return;
+    analytics.track("highlight_view_completed", {
+      matchday: result.matchday,
+      opponent: result.opponent,
+      mode: "skipped",
+      homeScore: result.homeScore,
+      awayScore: result.awayScore,
+    });
     setShownEvents(result.events);
     setHomeScore(result.homeScore);
     setAwayScore(result.awayScore);

@@ -51,7 +51,21 @@ export type AnalyticsEvent =
   | "reminder_push_dispatched"
   | "next_action_clicked"
   | "feature_flag_overridden"
-  | "balance_preset_applied";
+  | "balance_preset_applied"
+  // monetization funnel
+  | "cosmetic_previewed"
+  | "cosmetic_equipped"
+  | "cosmetic_purchase_attempted"
+  | "bundle_viewed"
+  | "pass_viewed"
+  | "pass_reward_claimed"
+  | "pass_premium_purchased"
+  | "gems_balance_viewed"
+  // Funnel + content events
+  | "club_created"
+  | "shop_viewed"
+  | "highlight_view_started"
+  | "highlight_view_completed";
 
 const SESSION_KEY = "slashfootball.analytics.session.v1";
 const BUFFER_KEY = "slashfootball.analytics.buffer.v1";

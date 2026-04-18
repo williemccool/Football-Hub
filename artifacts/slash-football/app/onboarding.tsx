@@ -13,7 +13,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
-import { analytics, cache, haptics } from "@/services";
+import { useGame } from "@/context/GameContext";
+import { analytics, cache, flags, haptics } from "@/services";
 import { ONBOARDING_KEY } from "@/constants/storageKeys";
 
 interface Step {
@@ -22,7 +23,7 @@ interface Step {
   body: string;
 }
 
-const STEPS: Step[] = [
+const FULL_STEPS: Step[] = [
   {
     icon: "zap",
     title: "Slash to scout",
@@ -50,22 +51,54 @@ const STEPS: Step[] = [
   },
 ];
 
+/** Compact 3-step variant used when `onboarding_speed=compact`. */
+const COMPACT_STEPS: Step[] = [
+  {
+    icon: "zap",
+    title: "Slash to scout",
+    body: "Slice glowing footballs to earn coins, essence and player shards. Avoid hazards.",
+  },
+  {
+    icon: "users",
+    title: "Build your squad",
+    body: "Upgrade players, set tactics, and pick your starting XI from the squad screen.",
+  },
+  {
+    icon: "award",
+    title: "Play the season",
+    body: "Take on weekly fixtures, climb the league, win the title.",
+  },
+];
+
 export default function OnboardingScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { state } = useGame();
   const [idx, setIdx] = useState(0);
   const fade = React.useRef(new Animated.Value(1)).current;
 
+  const speed = flags.variant("onboarding_speed");
+  const STEPS = speed === "compact" ? COMPACT_STEPS : FULL_STEPS;
+
   useEffect(() => {
-    analytics.track("onboarding_started");
-  }, []);
+    analytics.track("onboarding_started", { speed });
+  }, [speed]);
 
   const finish = async (skipped: boolean) => {
     await cache.write(ONBOARDING_KEY, true);
     analytics.track(skipped ? "onboarding_skipped" : "onboarding_completed", {
       stepReached: idx + 1,
       totalSteps: STEPS.length,
+      speed,
     });
+    if (!skipped && state.clubName) {
+      // Funnel marker: a finished onboarding with a club name is the
+      // moment the player has effectively "created" their club.
+      analytics.track("club_created", {
+        clubName: state.clubName,
+        managerLevel: state.managerLevel,
+      });
+    }
     router.replace("/(tabs)");
   };
 

@@ -57,6 +57,10 @@ function RootLayoutNav() {
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />
       <Stack.Screen
+        name="pass"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
+      <Stack.Screen
         name="debug"
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />

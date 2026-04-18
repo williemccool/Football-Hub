@@ -1,0 +1,477 @@
+We already have a strong Slash Football build that has gone through feature buildout, production hardening, and alpha-readiness work.
+
+Do NOT rebuild the app.
+
+Do NOT bloat the product.
+
+Do NOT add random major gameplay modes.
+
+Important constraint:
+
+Keep everything portable and vendor-neutral. Do not introduce hard dependency on Replit-specific services, SDKs, or operational assumptions. The codebase must remain easy to move later to another editor, repo, backend, CI/CD flow, and deployment stack.
+
+# GOAL
+
+This phase has two objectives:
+
+1. Audit and complete any remaining gaps from the alpha-readiness phase
+
+2. Make Slash Football ready for beta / soft launch / production-grade v1 release preparation
+
+This phase should focus on:
+
+- launch monetization structure
+
+- launch operations readiness
+
+- store/beta readiness
+
+- final KPI instrumentation and experimentability
+
+- cosmetics-driven revenue foundation
+
+- release-candidate polish
+
+Keep the product true to the original philosophy:
+
+- no pay-to-win at launch
+
+- cosmetics-first monetization
+
+- progression must stay fair
+
+- slash loop and club-building loop remain the heart of the game
+
+# PART 1 — AUDIT AND COMPLETE ANY REMAINING PROMPT C GAPS
+
+Before adding new systems, audit the current codebase and docs against the alpha-readiness goals.
+
+Check whether the following are fully implemented, partially implemented, or missing:
+
+- KPI event coverage and debug visibility
+
+- onboarding funnel instrumentation
+
+- slash engagement funnel instrumentation
+
+- progression funnel instrumentation
+
+- match/highlight funnel instrumentation
+
+- retention funnel support
+
+- economy health indicators
+
+- balance preset system
+
+- structured feedback categorization
+
+- feature flag / experiment framework
+
+- cohort-based config support
+
+- notification abstraction and trigger plumbing
+
+- soft launch ops docs completeness
+
+- final tester-facing polish
+
+If something from Prompt C is missing or partial, complete it before moving forward.
+
+Create a short internal audit doc summarizing:
+
+- completed
+
+- partially complete
+
+- missing and now completed in this pass
+
+# PART 2 — MONETIZATION FOUNDATION (NO PAY-TO-WIN)
+
+Build the monetization foundation for v1, but keep the game fair.
+
+## 2A. Cosmetics-first shop expansion
+
+Take the placeholder cosmetics screen and make it feel real and launch-ready.
+
+Support cosmetic categories:
+
+- kits
+
+- crests
+
+- pitch themes
+
+- goal celebration effects
+
+- UI themes if appropriate
+
+- club banners / frames / profile flair if appropriate
+
+Requirements:
+
+- preview states
+
+- owned vs locked states
+
+- equip flow
+
+- rarity presentation
+
+- pricing placeholder model
+
+- no real payment integration yet unless already safely scaffolded
+
+- clean extensible product model
+
+## 2B. Soft currency vs premium currency structure
+
+Design a clean portable currency model for launch.
+
+Suggested structure:
+
+- Coins = soft progression currency
+
+- Premium cosmetic currency = optional premium currency used only for cosmetics/pass if needed
+
+- Essence / fragments / catalysts remain progression currencies, not monetization shortcuts
+
+Requirements:
+
+- no pay-to-win mechanics
+
+- no paid direct rating boosts
+
+- no monetized unfair power acceleration in competitive loop
+
+- architecture should support both direct cosmetic purchase and pass rewards
+
+## 2C. Season pass structure
+
+Add the structural foundation for a launch season pass.
+
+Support:
+
+- free reward track
+
+- premium reward track placeholder
+
+- season XP linkage
+
+- claim flow
+
+- cosmetics-forward reward design
+
+- some fair progression rewards may exist, but keep them non-abusive and balanced
+
+Requirements:
+
+- keep implementation modular
+
+- no forced payment integration yet if not ready
+
+- make it easy to turn on later
+
+## 2D. Store product model
+
+Create a portable product/catalog model for:
+
+- cosmetics
+
+- bundles
+
+- season pass
+
+- limited-time offers
+
+- future founder pack / starter pack
+
+Do not hardcode product definitions into UI components.
+
+Use structured config/models.
+
+# PART 3 — BETA / SOFT LAUNCH READINESS
+
+## 3A. Beta readiness flows
+
+Prepare the app for real external beta users.
+
+Add or improve:
+
+- beta build labeling
+
+- environment display in debug/settings
+
+- safer error fallback copy
+
+- better first-run experience for new users
+
+- account/sync reassurance messaging
+
+- support/report issue entry points that feel real
+
+## 3B. Release gating checklist inside the project
+
+Add/update release docs for:
+
+- beta readiness checklist
+
+- production release checklist
+
+- monetization readiness checklist
+
+- app store submission checklist
+
+- analytics sanity checklist
+
+- rollback / hotfix checklist
+
+## 3C. Go / no-go dashboards
+
+Create an internal product readout view or docs-driven checklist for:
+
+- retention thresholds
+
+- crash/error thresholds
+
+- sync reliability thresholds
+
+- balance health thresholds
+
+- monetization readiness thresholds
+
+- fairness review before launch
+
+# PART 4 — KPI / EXPERIMENT READINESS FOR SOFT LAUNCH
+
+## 4A. Final KPI support
+
+Make sure the codebase and docs clearly support measurement of:
+
+- D1 / D3 / D7 retention
+
+- sessions per DAU
+
+- slash runs per DAU
+
+- upgrade rate
+
+- match completion rate
+
+- highlight completion rate
+
+- league table open rate
+
+- season progression rate
+
+- reward inflation indicators
+
+- cosmetic shop open rate
+
+- cosmetic preview rate
+
+- pass screen open rate
+
+- sync/error failure rate
+
+## 4B. Monetization funnel instrumentation
+
+Add analytics events for:
+
+- shop_viewed
+
+- cosmetic_previewed
+
+- cosmetic_equipped
+
+- pass_viewed
+
+- pass_reward_claimed
+
+- bundle_viewed
+
+- purchase_attempt_placeholder
+
+- premium_currency_balance_viewed
+
+Keep this portable through the analytics abstraction.
+
+## 4C. Experiment hooks for launch
+
+Allow feature-flag/config control over:
+
+- shop visibility
+
+- pass visibility
+
+- pass reward generosity
+
+- cosmetic pricing presets
+
+- starter reward generosity
+
+- onboarding speed
+
+- slash hazard intensity
+
+- reminder bar behavior
+
+- shop CTA frequency
+
+# PART 5 — PUSH / RE-ENGAGEMENT READINESS
+
+If not already fully wired, improve the notification abstraction and trigger system.
+
+Support future triggers for:
+
+- tickets full
+
+- next matchday ready
+
+- daily objectives reset
+
+- season ending soon
+
+- new upgrade available
+
+- rank dropped in standings
+
+- pass rewards claimable
+
+- cosmetic event live
+
+Keep this modular and portable.
+
+If actual push delivery is not fully ready, ensure the trigger/event plumbing and service interfaces are ready.
+
+# PART 6 — FINAL FTUE / UX POLISH FOR REAL USERS
+
+Improve clarity and emotional pull for first-time and returning users.
+
+Focus on:
+
+- stronger club identity feeling
+
+- clearer next-best-action hierarchy
+
+- better explanation of why slash matters
+
+- better explanation of season stakes
+
+- better explanation of standings / matchday progression
+
+- smoother reward drama
+
+- cleaner copywriting
+
+- fewer dead ends
+
+- better empty states
+
+- stronger cosmetic aspiration without feeling predatory
+
+Do not over-tutorialize. Keep it crisp.
+
+# PART 7 — FAIRNESS / ECONOMY SAFETY REVIEW
+
+Perform a structured review of the economy and fairness model.
+
+Check:
+
+- slash rewards are not too stingy
+
+- slash rewards are not inflationary
+
+- hazards are meaningful but not punishing enough to feel unfair
+
+- duplicate salvage choices are balanced
+
+- upgrades do not trivialize league progress too fast
+
+- season rewards feel motivating
+
+- cosmetic monetization does not accidentally leak into power
+
+Create a short internal economy/fairness review doc with recommendations.
+
+# PART 8 — APP STORE / RELEASE-CANDIDATE PREP
+
+Add or update project docs and placeholders for:
+
+- final app naming consistency
+
+- subtitle / short description placeholders
+
+- long description placeholder
+
+- screenshots checklist
+
+- icon / splash consistency checklist
+
+- privacy policy placeholder
+
+- terms placeholder
+
+- support email placeholder
+
+- age-rating/content notes
+
+- review notes template for Apple/Google
+
+- release notes template refinement
+
+Do not submit anything yet, but make the codebase and docs release-candidate ready.
+
+# PART 9 — TECHNICAL CLEANUP
+
+Do a focused cleanup pass:
+
+- remove stale dev-only code if no longer needed
+
+- tighten typings
+
+- clean warnings
+
+- improve code comments where architecture matters
+
+- ensure admin/debug tools are gated correctly
+
+- ensure no dangerous internal screens are accessible to normal users
+
+- verify offline/sync edge cases remain safe
+
+- verify monetization models are decoupled from UI
+
+# PART 10 — WHAT NOT TO DO
+
+Do not:
+
+- add PvP real-time gameplay
+
+- add pay-to-win mechanics
+
+- add huge new systems outside launch readiness
+
+- add random complexity
+
+- regress the core slash -> upgrade -> squad -> match -> season loop
+
+# DEFINITION OF DONE
+
+This phase is done when:
+
+- remaining alpha-readiness gaps are closed
+
+- the shop/cosmetics/pass foundations are launch-ready structurally
+
+- monetization remains fair and cosmetics-first
+
+- KPI and monetization funnels are instrumented
+
+- experiment and flag controls are strong enough for beta/soft launch
+
+- notification/re-engagement infrastructure is ready
+
+- app/docs are beta and release-candidate ready
+
+- the product feels polished enough for real external beta users and eventual soft launch

@@ -136,6 +136,7 @@ export function createInitialState(): GameState {
     managerXp: 0,
     seasonXp: 0,
     coins: 250,
+    gems: 80,
     essence: 0,
     traitFragments: 2,
     catalysts: 0,
@@ -165,6 +166,8 @@ export function createInitialState(): GameState {
     bestSlashScore: 0,
     totalSlashRuns: 0,
     championships: 0,
+    cosmetics: { owned: [], equipped: {} },
+    seasonPass: { premiumOwned: false, claimedFree: [], claimedPremium: [] },
   };
 }
 

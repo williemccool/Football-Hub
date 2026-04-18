@@ -16,7 +16,10 @@ export type NotificationTrigger =
   | "season_ending_soon"
   | "objective_reward_ready"
   | "upgrade_available"
-  | "table_position_dropped";
+  | "table_position_dropped"
+  | "daily_objectives_reset"
+  | "pass_reward_claimable"
+  | "cosmetic_event_live";
 
 export interface NotificationPayload {
   trigger: NotificationTrigger;
@@ -128,6 +131,44 @@ class NotificationService {
       });
     }
 
+    if (snapshot.passClaimableTiers > 0) {
+      out.push({
+        trigger: "pass_reward_claimable",
+        id: `pass_reward_claimable:${snapshot.passClaimableTiers}`,
+        title: "Pass rewards waiting",
+        body: `${snapshot.passClaimableTiers} season pass ${
+          snapshot.passClaimableTiers === 1 ? "reward is" : "rewards are"
+        } ready to claim.`,
+        route: "/pass",
+        severity: "success",
+        createdAt: now,
+      });
+    }
+
+    if (snapshot.cosmeticEventActive) {
+      out.push({
+        trigger: "cosmetic_event_live",
+        id: `cosmetic_event_live:${snapshot.cosmeticEventId ?? "default"}`,
+        title: "Limited cosmetic drop live",
+        body: snapshot.cosmeticEventLabel ?? "A new cosmetic offer is live in the shop.",
+        route: "/shop",
+        severity: "info",
+        createdAt: now,
+      });
+    }
+
+    if (snapshot.dailyObjectivesJustReset) {
+      out.push({
+        trigger: "daily_objectives_reset",
+        id: `daily_objectives_reset:${snapshot.dailyObjectivesResetTag}`,
+        title: "Daily objectives refreshed",
+        body: "A new set of daily objectives is ready.",
+        route: "/",
+        severity: "info",
+        createdAt: now,
+      });
+    }
+
     if (snapshot.tablePositionDelta < 0) {
       out.push({
         trigger: "table_position_dropped",
@@ -190,6 +231,18 @@ export interface ReminderSnapshot {
   tablePosition: number;
   /** Negative = dropped, positive = climbed, 0 = unchanged. */
   tablePositionDelta: number;
+  /** Number of season-pass tiers ready to claim (free + premium combined). */
+  passClaimableTiers: number;
+  /** True if a limited cosmetic offer is currently live. */
+  cosmeticEventActive: boolean;
+  /** Optional id of the live cosmetic event (for stable dedup). */
+  cosmeticEventId?: string;
+  /** Optional human-readable label for the live cosmetic offer. */
+  cosmeticEventLabel?: string;
+  /** True the first time we surface today's daily objectives reset. */
+  dailyObjectivesJustReset: boolean;
+  /** Stable tag for the reset (e.g. ISO yyyy-mm-dd). */
+  dailyObjectivesResetTag: string;
 }
 
 function ordinal(n: number): string {
