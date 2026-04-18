@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import Constants from "expo-constants";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -20,11 +19,14 @@ import { useGame } from "@/context/GameContext";
 import {
   analytics,
   auth,
+  flags,
   haptics,
   isRemoteConfigured,
   sync,
+  tester,
   type AccountInfo,
   type SyncSnapshot,
+  type TesterProfile,
 } from "@/services";
 
 const SUPPORT_EMAIL = "support@slash-football.example";
@@ -41,9 +43,10 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { reset } = useGame();
   const [hapticsOn, setHapticsOn] = useState(haptics.isEnabled());
-  const [audioOn, setAudioOn] = useState(true); // placeholder until audio lands
+  const [audioOn, setAudioOn] = useState(true);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [snap, setSnap] = useState<SyncSnapshot>(sync.snapshot());
+  const [profile, setProfile] = useState<TesterProfile | null>(tester.current());
 
   useEffect(() => {
     analytics.track("settings_viewed");
@@ -52,10 +55,11 @@ export default function SettingsScreen() {
   }, []);
 
   useEffect(() => sync.subscribe(setSnap), []);
+  useEffect(() => tester.subscribe(setProfile), []);
 
   const top = Platform.OS === "web" ? 24 : insets.top + 12;
-  const appVersion =
-    (Constants.expoConfig?.version as string | undefined) ?? "0.0.0";
+  const build = tester.getBuild();
+  const opsVisible = flags.bool("ops_admin_visible");
 
   const open = (url: string) => Linking.openURL(url).catch(() => {});
 
@@ -77,6 +81,13 @@ export default function SettingsScreen() {
     );
   };
 
+  const cycleCohort = async () => {
+    const cohorts = ["internal-dev", "internal-qa", "alpha-wave-1", "alpha-wave-2", "beta"];
+    const i = cohorts.indexOf(profile?.cohort ?? cohorts[0]!);
+    const next = cohorts[(i + 1) % cohorts.length]!;
+    await tester.update({ cohort: next, internal: next.startsWith("internal") });
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: top }]}>
@@ -88,6 +99,20 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+        {build.buildChannel !== "production" && (
+          <View style={[styles.banner, { backgroundColor: "#FFB34722", borderColor: "#FFB347" }]}>
+            <Text style={styles.bannerEmoji}>🧪</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.bannerTitle, { color: "#FFB347" }]}>
+                {build.buildChannel.toUpperCase()} BUILD
+              </Text>
+              <Text style={[styles.bannerBody, { color: colors.mutedForeground }]}>
+                {build.label}
+              </Text>
+            </View>
+          </View>
+        )}
+
         <Section title="Preferences">
           <ToggleRow
             icon="zap"
@@ -102,6 +127,39 @@ export default function SettingsScreen() {
             onChange={setAudioOn}
             note="Coming soon"
           />
+        </Section>
+
+        <Section title="Feedback">
+          <ActionRow
+            icon="message-square"
+            label="Send feedback"
+            color={colors.primary}
+            onPress={() => router.push("/feedback?kind=send_feedback")}
+          />
+          <ActionRow
+            icon="alert-octagon"
+            label="Report an issue"
+            color={colors.destructive}
+            onPress={() => router.push("/feedback?kind=report_issue&category=bug")}
+          />
+        </Section>
+
+        <Section title="Tester profile">
+          <Row label="Install ID" value={profile?.installId ?? "—"} />
+          <Row label="Installed" value={fmt(profile?.installedAt ?? null)} />
+          <Pressable onPress={cycleCohort} style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Cohort</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[styles.rowValue, { color: colors.primary }]} numberOfLines={1}>
+                {profile?.cohort ?? "—"}
+              </Text>
+              <Feather name="repeat" size={12} color={colors.primary} />
+            </View>
+          </Pressable>
+          <Row label="Type" value={profile?.internal ? "Internal" : "External"} />
+          <Row label="Source" value={profile?.source ?? "—"} />
+          <Row label="Region" value={profile?.region ?? "—"} />
+          <Row label="Experiment" value={profile?.experimentGroup ?? "—"} />
         </Section>
 
         <Section title="Account">
@@ -152,8 +210,11 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="App">
-          <Row label="Version" value={appVersion} />
-          <Row label="Platform" value={Platform.OS} />
+          <Row label="Version" value={build.appVersion} />
+          <Row label="Build" value={build.buildNumber} />
+          <Row label="Channel" value={build.buildChannel} />
+          <Row label="Environment" value={build.environment} />
+          <Row label="Platform" value={build.platform} />
           <Pressable
             onPress={() => router.push("/debug")}
             style={({ pressed }) => [
@@ -166,6 +227,34 @@ export default function SettingsScreen() {
               Sync & debug info
             </Text>
           </Pressable>
+          {opsVisible && (
+            <>
+              <Pressable
+                onPress={() => router.push("/admin")}
+                style={({ pressed }) => [
+                  styles.actionRow,
+                  { borderColor: "#FFB34766", opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Feather name="sliders" size={14} color="#FFB347" />
+                <Text style={[styles.actionText, { color: "#FFB347" }]}>
+                  Tuning admin
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push("/economy")}
+                style={({ pressed }) => [
+                  styles.actionRow,
+                  { borderColor: "#FFB34766", opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Feather name="bar-chart-2" size={14} color="#FFB347" />
+                <Text style={[styles.actionText, { color: "#FFB347" }]}>
+                  Economy & live-ops
+                </Text>
+              </Pressable>
+            </>
+          )}
           <Pressable
             onPress={confirmReset}
             style={({ pressed }) => [
@@ -238,6 +327,29 @@ function ToggleRow({
   );
 }
 
+function ActionRow({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Feather name={icon} size={14} color={color} />
+        <Text style={[styles.rowLabel, { color: colors.foreground }]}>{label}</Text>
+      </View>
+      <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+    </Pressable>
+  );
+}
+
 function LinkRow({
   icon,
   label,
@@ -276,6 +388,18 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  bannerEmoji: { fontSize: 22 },
+  bannerTitle: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 1.2 },
+  bannerBody: { fontSize: 11, marginTop: 2, fontFamily: "Inter_500Medium" },
   section: {
     fontSize: 11,
     letterSpacing: 1,

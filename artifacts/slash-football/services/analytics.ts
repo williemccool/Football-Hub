@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 import { cache } from "./cache";
+import { tester } from "./tester";
 import type { AnalyticsService } from "./types";
 
 /**
@@ -41,7 +42,16 @@ export type AnalyticsEvent =
   | "sync_failed"
   | "migration_failed"
   | "migration_succeeded"
-  | "offline_mode_used";
+  | "offline_mode_used"
+  | "feedback_submitted"
+  | "sentiment_prompt_shown"
+  | "sentiment_prompt_dismissed"
+  | "reminder_shown"
+  | "reminder_dismissed"
+  | "reminder_push_dispatched"
+  | "next_action_clicked"
+  | "feature_flag_overridden"
+  | "balance_preset_applied";
 
 const SESSION_KEY = "slashfootball.analytics.session.v1";
 const BUFFER_KEY = "slashfootball.analytics.buffer.v1";
@@ -77,7 +87,12 @@ class PortableAnalytics implements AnalyticsService {
   }
 
   track(event: string, props: Record<string, unknown> = {}): void {
-    const merged = { ...baseProps, sessionCount: this.sessionCount, ...props };
+    const merged = {
+      ...baseProps,
+      ...tester.analyticsBase(),
+      sessionCount: this.sessionCount,
+      ...props,
+    };
     if (__DEV__) {
       // eslint-disable-next-line no-console
       console.log("[analytics]", event, merged);

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -13,10 +13,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HudPill } from "@/components/HudPill";
+import { ReminderBar } from "@/components/ReminderBar";
 import { useColors } from "@/hooks/useColors";
 import { useGame } from "@/context/GameContext";
 import { getOpponentForMatchday } from "@/lib/league";
-import { cache } from "@/services";
+import { deriveHooks } from "@/lib/retentionHooks";
+import { analytics, cache, flags, type ReminderSnapshot } from "@/services";
 import { ONBOARDING_KEY } from "@/constants/storageKeys";
 
 function formatMs(ms: number) {
@@ -61,6 +63,32 @@ export default function HubScreen() {
       : Math.round(lineupPlayers.reduce((s, p) => s + p.rating, 0) / lineupPlayers.length);
   const injuredCount = state.players.filter((p) => p.injuredMatches > 0).length;
   const opp = getOpponentForMatchday(state.season);
+
+  const prevTablePosRef = useRef<number | null>(null);
+  const hooks = useMemo(
+    () => deriveHooks(state, prevTablePosRef.current),
+    [state],
+  );
+  useEffect(() => {
+    if (hooks.tablePosition > 0) prevTablePosRef.current = hooks.tablePosition;
+  }, [hooks.tablePosition]);
+
+  const reminderSnapshot: ReminderSnapshot = {
+    tickets: state.tickets,
+    maxTickets: state.maxTickets,
+    season: state.season.number,
+    matchday: state.season.matchday,
+    totalMatchdays: state.season.totalMatchdays,
+    seasonFinished: !!state.season.finished,
+    clubName: state.clubName,
+    opponentName: opp?.name ?? state.upcomingOpponent.name,
+    unclaimedRewards: hooks.unclaimedRewards,
+    affordableUpgrades: hooks.affordableUpgrades,
+    tablePosition: hooks.tablePosition,
+    tablePositionDelta: hooks.tablePositionDelta,
+  };
+
+  const showNextAction = flags.bool("next_action_banner") && hooks.primary;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -146,6 +174,51 @@ export default function HubScreen() {
             </View>
           )}
         </View>
+
+        <ReminderBar snapshot={reminderSnapshot} />
+
+        {showNextAction && hooks.primary && (
+          <Pressable
+            onPress={() => {
+              analytics.track("next_action_clicked", { id: hooks.primary!.id });
+              router.push(hooks.primary!.route as never);
+            }}
+            style={({ pressed }) => [
+              styles.nextActionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor:
+                  hooks.primary!.severity === "warning"
+                    ? "#FFB347"
+                    : hooks.primary!.severity === "success"
+                      ? colors.primary
+                      : colors.accent,
+                opacity: pressed ? 0.9 : 1,
+              },
+            ]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.nextActionLabel, { color: colors.mutedForeground }]}>
+                NEXT BEST ACTION
+              </Text>
+              <Text style={[styles.nextActionTitle, { color: colors.foreground }]}>
+                {hooks.primary.title}
+              </Text>
+              <Text
+                style={[styles.nextActionBody, { color: colors.mutedForeground }]}
+                numberOfLines={2}
+              >
+                {hooks.primary.body}
+              </Text>
+            </View>
+            <View style={styles.nextActionCta}>
+              <Text style={[styles.nextActionCtaText, { color: colors.primary }]}>
+                {hooks.primary.cta}
+              </Text>
+              <Feather name="arrow-right" size={14} color={colors.primary} />
+            </View>
+          </Pressable>
+        )}
 
         {/* Slash CTA */}
         <Pressable
@@ -513,4 +586,38 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   claimBtnText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  nextActionCard: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  nextActionLabel: {
+    fontSize: 9,
+    letterSpacing: 1.2,
+    fontFamily: "Inter_600SemiBold",
+  },
+  nextActionTitle: {
+    fontSize: 14,
+    marginTop: 2,
+    fontFamily: "Inter_700Bold",
+  },
+  nextActionBody: {
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: "Inter_500Medium",
+  },
+  nextActionCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: 8,
+  },
+  nextActionCtaText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
 });

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SentimentPrompt } from "@/components/SentimentPrompt";
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import type { MatchEvent, MatchResult } from "@/lib/types";
@@ -26,7 +27,15 @@ export default function MatchScreen() {
   const [awayScore, setAwayScore] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [done, setDone] = useState(false);
+  const [showSentiment, setShowSentiment] = useState(false);
   const [tab, setTab] = useState<"reel" | "analysis">("reel");
+
+  useEffect(() => {
+    if (done) {
+      const t = setTimeout(() => setShowSentiment(true), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [done]);
   const scrollRef = useRef<ScrollView>(null);
 
   const opponent = result?.opponent ?? state.upcomingOpponent.name;
@@ -330,6 +339,16 @@ export default function MatchScreen() {
           </View>
         )}
       </View>
+      <SentimentPrompt
+        surface="match_completed"
+        visible={showSentiment}
+        onClose={() => setShowSentiment(false)}
+        context={{
+          opponent,
+          homeScore: result?.homeScore ?? 0,
+          awayScore: result?.awayScore ?? 0,
+        }}
+      />
     </View>
   );
 }

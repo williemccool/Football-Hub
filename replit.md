@@ -113,3 +113,18 @@ endpoint later without changing call sites.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and
 package details.
+
+## Alpha-readiness (April 2026)
+
+Slash Football is being prepped for closed alpha. New infrastructure under `artifacts/slash-football/`:
+
+- `services/tester.ts` — install id, cohort, build channel, env. Attached to every analytics event.
+- `services/featureFlags.ts` — typed flag registry with cohort + per-install overrides; controls things like `next_action_banner`, `session_sentiment_prompt`, `slash_hazard_intensity`, `ops_admin_visible`.
+- `services/feedback.ts` + `app/feedback.tsx` — in-app feedback / bug report form across 10 categories.
+- `services/notifications.ts` + `components/ReminderBar.tsx` — reminder triggers (matchday available, tickets full, unclaimed rewards, table drop, season finale, etc.).
+- `lib/balancePresets.ts` + `app/economy.tsx` — 5 named tuning presets and a live-ops dashboard (recent analytics ring buffer + active flags + tuning).
+- `lib/retentionHooks.ts` — derives "next best action" + reminder snapshot for the hub.
+- `components/SentimentPrompt.tsx` — rate-limited 1–5 star prompt mounted post-match and post-slash.
+- `docs/` — ALPHA_TEST_PLAN, KPI_TARGETS, BALANCE_REVIEW, BUG_TRIAGE, INCIDENT_RESPONSE, GO_NO_GO, RELEASE_NOTES_TEMPLATE, COHORT_CONFIG.
+
+Settings screen surfaces build channel + tester cohort cycling, feedback entry points, and (for `ops_admin_visible` cohorts) the live-ops + admin links.

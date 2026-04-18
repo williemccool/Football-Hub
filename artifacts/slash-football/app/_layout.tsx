@@ -17,7 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SplashGate } from "@/components/SplashGate";
 import { GameProvider } from "@/context/GameContext";
-import { analytics } from "@/services";
+import { analytics, flags, tester } from "@/services";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -72,6 +72,14 @@ function RootLayoutNav() {
         name="onboarding"
         options={{ presentation: "fullScreenModal", animation: "fade" }}
       />
+      <Stack.Screen
+        name="feedback"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
+      <Stack.Screen
+        name="economy"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
     </Stack>
   );
 }
@@ -91,7 +99,13 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    analytics.track("app_open");
+    (async () => {
+      // Make sure tester profile + flag overrides are loaded before we send
+      // the first analytics event so that cohort / installId attribution is
+      // correct from the very first event in the session.
+      await Promise.all([tester.get(), flags.whenReady()]);
+      analytics.track("app_open");
+    })();
   }, []);
 
   if (!fontsLoaded && !fontError) return null;

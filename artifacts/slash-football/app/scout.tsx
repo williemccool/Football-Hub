@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon3D } from "@/components/Icon3D";
+import { SentimentPrompt } from "@/components/SentimentPrompt";
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import { motionForKind } from "@/lib/motion";
@@ -76,6 +77,7 @@ export default function ScoutScreen() {
   const [moraleDelta, setMoraleDelta] = useState(0);
   const [trail, setTrail] = useState<{ x: number; y: number; t: number }[]>([]);
   const [tierFlash, setTierFlash] = useState<{ name: string; color: string; t: number } | null>(null);
+  const [showSentiment, setShowSentiment] = useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const tierAnim = useRef(new Animated.Value(0)).current;
   const flashAnim = useRef(new Animated.Value(0)).current;
@@ -269,6 +271,7 @@ export default function ScoutScreen() {
     setMoraleDelta(out.moraleDelta);
     setPhase("done");
     haptics.fire("success");
+    setTimeout(() => setShowSentiment(true), 1400);
   };
 
   const triggerShake = () => {
@@ -651,6 +654,17 @@ export default function ScoutScreen() {
             )}
           </View>
         </ScrollView>
+        <SentimentPrompt
+          surface="slash_run_completed"
+          visible={showSentiment}
+          onClose={() => setShowSentiment(false)}
+          context={{
+            runScore: scoreRef.current,
+            comboPeak: comboPeakRef.current,
+            injured: !!injuredName,
+            unlocked: !!bonusPlayer,
+          }}
+        />
       </View>
     );
   }
