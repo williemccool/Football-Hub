@@ -17,6 +17,21 @@ import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import { haptics } from "@/services";
 import type { SalvageMode } from "@/context/GameContext";
+import type { Role } from "@/lib/types";
+
+const FORMATION_433_ROLES: Role[] = [
+  "GK",
+  "FB",
+  "CB",
+  "CB",
+  "FB",
+  "DM",
+  "CM",
+  "AM",
+  "WG",
+  "ST",
+  "WG",
+];
 
 const RARITY_COLOR = {
   Common: "#7B8497",
@@ -30,7 +45,7 @@ export default function PlayerDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, upgradePlayer, unlockTrait, salvagePlayer } = useGame();
+  const { state, upgradePlayer, unlockTrait, salvagePlayer, setLineupSlot } = useGame();
   const player = state.players.find((p) => p.id === id);
   const [salvageOpen, setSalvageOpen] = useState(false);
 
@@ -222,12 +237,70 @@ export default function PlayerDetailScreen() {
         </Pressable>
 
         {inLineup && (
-          <View style={[styles.lineupBadge, { borderColor: colors.primary }]}>
+          <Pressable
+            onPress={() => {
+              haptics.fire("tap");
+              const slotIdx = state.lineup.indexOf(player.id);
+              if (slotIdx !== -1) setLineupSlot(slotIdx, null);
+            }}
+            style={({ pressed }) => [
+              styles.lineupBadge,
+              { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
             <Feather name="check-circle" size={14} color={colors.primary} />
             <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
-              In starting lineup
+              In starting lineup • tap to remove
             </Text>
-          </View>
+          </Pressable>
+        )}
+
+        {!inLineup && (
+          <Pressable
+            onPress={() => {
+              haptics.fire("tap");
+              const emptyIdx = FORMATION_433_ROLES.findIndex(
+                (role, idx) => role === player.role && !state.lineup[idx],
+              );
+              if (emptyIdx !== -1) {
+                setLineupSlot(emptyIdx, player.id);
+                haptics.fire("success");
+                return;
+              }
+              const sameRoleIdxs = FORMATION_433_ROLES
+                .map((role, idx) => ({ role, idx }))
+                .filter((r) => r.role === player.role);
+              if (sameRoleIdxs.length > 0) {
+                let weakest = sameRoleIdxs[0]!;
+                let weakestRating = Infinity;
+                for (const s of sameRoleIdxs) {
+                  const pid = state.lineup[s.idx];
+                  const occ = state.players.find((pp) => pp.id === pid);
+                  const r = occ?.rating ?? -1;
+                  if (r < weakestRating) {
+                    weakestRating = r;
+                    weakest = s;
+                  }
+                }
+                setLineupSlot(weakest.idx, player.id);
+                haptics.fire("success");
+                return;
+              }
+              router.push("/lineup");
+            }}
+            style={({ pressed }) => [
+              styles.addLineupBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Feather name="plus-circle" size={16} color={colors.primaryForeground} />
+            <Text style={[styles.addLineupText, { color: colors.primaryForeground }]}>
+              Add to starting lineup
+            </Text>
+          </Pressable>
         )}
 
         {!inLineup && (
@@ -378,6 +451,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
+  addLineupBtn: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  addLineupText: { fontSize: 14, fontFamily: "Inter_700Bold" },
   salvageBtn: {
     marginTop: 12,
     flexDirection: "row",

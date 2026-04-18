@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "Start Backend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Mobile"
+
 [[workflows.workflow]]
 name = "Start Backend"
 author = "agent"
@@ -31,6 +35,18 @@ outputType = "console"
 task = "shell.exec"
 args = "PORT=3000 pnpm --filter @workspace/api-server run dev"
 waitForPort = 3000
+
+[[workflows.workflow]]
+name = "Start Mobile"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=21394 pnpm --filter @workspace/slash-football run dev"
+waitForPort = 21394
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 stack = "PNPM_WORKSPACE"
