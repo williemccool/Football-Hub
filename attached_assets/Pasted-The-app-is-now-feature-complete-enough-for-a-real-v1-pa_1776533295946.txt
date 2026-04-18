@@ -1,0 +1,221 @@
+The app is now feature-complete enough for a real v1 path. Do NOT add random new gameplay systems.
+
+I want you to take the current Slash Football codebase and make it production-grade v1 ready for release.
+
+Important constraint:
+Keep the architecture portable and vendor-neutral. Do not introduce backend or deployment lock-in. Assume this project may later move to another code editor, repo, backend, CI/CD pipeline, and hosting stack.
+
+# GOAL
+Harden the app for a real v1 release candidate.
+
+# FOCUS AREAS
+1. reliability
+2. account identity and cloud restore
+3. analytics
+4. error/crash observability
+5. release readiness
+6. onboarding and FTUE polish
+7. admin/live-ops readiness
+8. performance and QA
+
+# PART 1 — ACCOUNT / IDENTITY LAYER
+
+Implement a portable user identity model.
+
+Requirements:
+- guest account creation on first launch
+- stable unique user ID
+- backend-linked account record
+- path for future account upgrade (email/social) without rewriting core logic
+- cloud restore compatibility
+- clear account status in settings/debug view
+
+Do not overcomplicate auth yet.
+This can be guest-first, but it must support long-term account portability.
+
+# PART 2 — ANALYTICS
+
+Add a portable analytics service wrapper.
+Do not hardcode a single vendor into business logic.
+
+Track at minimum:
+- app_open
+- onboarding_started
+- onboarding_completed
+- club_created
+- slash_run_started
+- slash_run_completed
+- slash_run_score
+- slash_reward_claimed
+- player_unlocked
+- player_upgraded
+- trait_forged
+- lineup_updated
+- tactics_updated
+- match_started
+- match_completed
+- highlight_view_started
+- highlight_view_completed
+- league_table_viewed
+- daily_objective_claimed
+- season_reward_claimed
+- shop_viewed
+- sync_failed
+- migration_failed
+- migration_succeeded
+- offline_mode_used
+
+Add event properties where useful:
+- session count
+- score band
+- combo tier reached
+- reward rarity
+- match result
+- league rank
+- device/platform
+- app version
+
+# PART 3 — ERROR LOGGING / OBSERVABILITY
+
+Add a portable error logging layer.
+
+Track:
+- JS/runtime errors
+- API failures
+- state migration failures
+- sync conflicts
+- replay payload load failures
+- match sim generation failures
+- save corruption detection
+
+Requirements:
+- central logging wrapper
+- useful error context
+- no sensitive data leakage
+- graceful user-facing fallback states
+
+# PART 4 — ONBOARDING / FTUE POLISH
+
+The app needs to be easy to understand for first-time users.
+
+Implement:
+- short first-time onboarding flow
+- simple explanation of slash -> upgrade -> squad -> match -> league loop
+- first guided slash run
+- first guided player upgrade
+- first guided lineup setup
+- first guided match
+- first guided league-table reveal
+- lightweight contextual tooltips
+- skip option for returning/dev users
+
+Keep it elegant and short, not annoying.
+
+# PART 5 — SETTINGS / PLAYER SUPPORT
+
+Add a proper settings/support screen.
+
+Include:
+- haptics toggle
+- audio toggle placeholder if needed
+- account/device info
+- restore/sync status
+- privacy/terms placeholder links
+- support/contact placeholder
+- app version/build info
+- clear cache / sign out / reset in safe dev-only or explicit-confirmation ways
+
+# PART 6 — LIVE-OPS / ADMIN READINESS
+
+Improve internal tuning tools for real operations.
+
+Admin/debug capabilities should include:
+- economy tuning
+- ticket cap/refill tuning
+- object spawn tuning
+- hazard probability tuning
+- season reward tuning
+- league size settings
+- player progression tuning
+- duplicate conversion tuning
+- mission tuning
+- remote config architecture placeholder
+- feature flag structure
+
+Do not make this ugly or hacky. Keep it organized.
+
+# PART 7 — PERFORMANCE HARDENING
+
+Optimize for real phones.
+
+Requirements:
+- reduce unnecessary re-renders
+- optimize slash mode performance
+- optimize highlight playback
+- improve asset loading
+- reduce startup time
+- ensure no memory leaks
+- keep animations smooth
+- keep battery impact reasonable
+
+Add a small internal performance diagnostics view if useful.
+
+# PART 8 — QA / TESTING / RELEASE HARDENING
+
+Add production-grade safeguards.
+
+Requirements:
+- input validation
+- state guards
+- reward duplication prevention
+- safe migration versioning
+- safe season reset handling
+- safe offline replay/sync handling
+- better empty/error/loading states
+- more defensive programming around progression and economy
+
+Add:
+- smoke test checklist in project docs
+- release checklist in project docs
+- environment configuration docs
+- architecture overview doc
+
+# PART 9 — STORE-READINESS BASICS
+
+Prepare for a real app release candidate.
+
+Include:
+- polished app name usage
+- splash/logo consistency
+- icon consistency
+- settings/legal placeholders
+- privacy policy placeholder link
+- terms placeholder link
+- support email placeholder
+- age/content review readiness notes
+- release notes template
+- metadata checklist doc for app stores
+
+No need to submit yet, but make the app feel release-ready.
+
+# PART 10 — WHAT NOT TO DO
+
+Do not:
+- add unnecessary new game modes
+- add pay-to-win systems
+- bloat the app with half-baked features
+- tightly couple code to a single vendor
+- regress the core loop
+
+# DEFINITION OF DONE
+
+This phase is done when:
+- the app is stable enough for a real external alpha / beta
+- users can reliably keep and restore progress
+- analytics and error logging exist
+- onboarding is clear
+- settings/support/legal placeholders exist
+- performance is solid
+- admin/live-ops tooling is organized
+- release docs/checklists exist
+- the codebase is portable and not dependent on Replit-specific internals

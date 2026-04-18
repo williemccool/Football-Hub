@@ -1,0 +1,231 @@
+We already have a working React Native + Expo app for Slash Football. Do NOT rebuild the app from scratch.
+
+Important constraint:
+I do NOT want any implementation that is tightly coupled to Replit-specific services or SDKs. I may move this codebase later to my own coding editor, backend, and deployment stack.
+
+So:
+- keep the current app and improve it
+- build the remaining unfinished systems in a portable, vendor-neutral way
+- use clean abstractions for database, object storage, auth/session, and sync
+- avoid Replit-only APIs in core business logic
+- structure the project so I can later swap backend providers with minimal rewriting
+
+The current app is already strong in gameplay and UX. The remaining work is to complete unfinished systems and make the architecture portable.
+
+# GOAL
+Finish all incomplete items from the previous prompts while making the app portable and ready for future migration away from Replit.
+
+# UNFINISHED ITEMS TO COMPLETE
+These must all be completed in this phase:
+1. Real backend-backed persistence
+2. Replay/object payload storage abstraction
+3. Safe migration from local AsyncStorage state
+4. Stronger haptics in slash mode
+5. Duplicate salvage picker
+6. Icon warning cleanup
+7. Proper splash/loading/sync screen
+8. Cosmetics/shop placeholder
+9. Debug/status tools for sync verification
+
+# PART 1 — PORTABLE BACKEND ARCHITECTURE
+
+Create a clean backend architecture that is NOT vendor-locked.
+
+## 1A. Create service abstractions
+Create interfaces / service layers for:
+- Auth/session service
+- Database service
+- Object storage service
+- Analytics service
+- Error logging service
+- Sync service
+
+Do not hardcode Replit-specific logic into gameplay or state logic.
+
+Use environment-based adapters so the code can later be moved to any backend stack.
+
+## 1B. Define canonical backend data model
+Create clean backend models for:
+- users
+- clubs
+- player_templates
+- user_players
+- traits
+- user_traits
+- squads
+- squad_slots
+- fixtures
+- match_events
+- standings
+- slash_runs
+- inventory/currencies
+- economy_config
+- daily_objectives
+- user_objective_progress
+- season_state
+- replay_assets
+
+## 1C. Use backend as source of truth
+Refactor the app so:
+- backend state becomes the source of truth
+- local AsyncStorage is a cache/offline layer only
+- app boot loads canonical state from backend when possible
+- sync strategy is clear and safe
+
+# PART 2 — STORAGE ABSTRACTION FOR REPLAYS AND PAYLOADS
+
+Create a portable object storage layer.
+
+## 2A. Replay payload storage
+Store match replay/highlight payloads as separate structured objects via a storage service abstraction.
+
+Each fixture should have:
+- relational metadata in DB
+- replay payload reference key
+- clear fetch flow for loading highlights
+
+## 2B. Future asset readiness
+Structure the storage layer so it can later hold:
+- replay payloads
+- cosmetic assets
+- club crest assets
+- event media
+- generated content assets
+
+# PART 3 — MIGRATION FROM CURRENT LOCAL STATE
+
+The app currently has local AsyncStorage state.
+Do not break existing users.
+
+## 3A. Add migration flow
+On first launch after this update:
+- detect existing local state
+- create/load backend user record
+- migrate local state to backend-backed records
+- verify success
+- keep migration version markers
+- preserve local backup until migration is confirmed
+
+## 3B. Safe fallback
+If backend sync/migration fails:
+- keep app usable locally
+- retry later
+- do not destroy user progress
+
+## 3C. Debug visibility
+Add a hidden developer/debug screen showing:
+- local save present or not
+- backend sync state
+- migration status
+- last successful sync time
+- user ID
+- club ID
+- fixture count
+- replay payload count
+- pending offline actions
+
+# PART 4 — HAPTICS IMPROVEMENT
+
+Slash mode needs stronger tactile quality.
+
+Implement native-friendly haptic feedback:
+- light feedback on normal successful slices
+- stronger feedback on combo tier increases
+- distinct premium feedback on golden/rare hits
+- warning/error feedback on hazard hits
+- subtle completion feedback at end-of-run reward reveal
+
+Rules:
+- do not overfire haptics
+- add a settings toggle for haptics on/off
+- keep implementation portable and isolated in a haptics service wrapper
+
+# PART 5 — DUPLICATE SALVAGE PICKER
+
+Right now duplicate conversion is automatic.
+Implement a compact mobile-friendly picker whenever duplicate or excess shard conversion happens.
+
+Options:
+- Quick Sell -> higher coin output
+- Convert to Essence -> higher essence output
+- Apply to Evolution -> progression value if eligible
+
+Requirements:
+- disable ineligible choices clearly
+- optional “remember my choice” toggle
+- keep UX lightweight and fast
+- preserve current economy balance unless explicitly adjusted
+
+# PART 6 — ICON WARNINGS AND ASSET CLEANUP
+
+Fix the current icon warnings by replacing invalid icon names with valid supported icons.
+
+Requirements:
+- no noisy runtime icon warnings
+- keep visual consistency
+- avoid mixing icon libraries unnecessarily unless done cleanly
+
+# PART 7 — SPLASH / LOADING / SYNC SCREEN
+
+Add a proper polished splash/loading state.
+
+Requirements:
+- Slash Football branding/title
+- subtle premium animation
+- clear loading state
+- if sync is happening, show “syncing club data” or equivalent
+- if offline fallback is used, message it gracefully
+
+# PART 8 — COSMETICS / SHOP PLACEHOLDER
+
+Add a lightweight cosmetics/shop placeholder screen to make product structure complete.
+
+Sections:
+- kits
+- crests
+- pitch themes
+- goal celebration effects
+
+Requirements:
+- placeholder / coming soon supported
+- no monetization yet
+- visually polished
+- feels like part of the product, not a dead screen
+
+# PART 9 — OFFLINE + SYNC LAYER
+
+Add a proper offline-capable sync model.
+
+Requirements:
+- queue state-changing actions while offline
+- retry sync when online
+- resolve conflicts simply for now using safe server-authoritative rules
+- prevent double-rewarding and duplicate writes
+- make slash rewards, upgrades, fixtures, and match results robust
+
+# PART 10 — IMPLEMENTATION CONSTRAINTS
+
+- Do not regress working gameplay
+- Do not rewrite good systems unnecessarily
+- Refactor carefully
+- Keep React Native + Expo structure clean
+- Keep all core logic portable
+- Keep current neon football sci-fi identity
+- Keep performance good on real phones
+- Add comments where architecture decisions matter
+
+# DEFINITION OF DONE
+
+This phase is done when:
+- backend-backed persistence exists
+- local users can migrate safely
+- replay payloads are stored via a storage abstraction
+- backend is the source of truth
+- local storage becomes cache/offline fallback
+- haptics feel meaningfully better
+- duplicate salvage offers user choice
+- icon warnings are gone
+- splash/loading/sync state is polished
+- cosmetics placeholder exists
+- debug tools clearly show sync/migration/backend health
+- architecture is portable and not tightly coupled to Replit
