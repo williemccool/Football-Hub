@@ -1,0 +1,332 @@
+We already have a strong Slash Football build with:
+- core gameplay loop
+- season/league structure
+- alpha-readiness work
+- monetization foundation (shop, gems, season pass)
+- analytics/event plumbing
+- production-hardening groundwork
+
+Do NOT rebuild the app.
+Do NOT add random new gameplay systems.
+Do NOT bloat the product.
+
+Important constraints:
+- keep the architecture portable and vendor-neutral
+- do not hard-lock core logic to Replit-specific services
+- keep monetization fair and cosmetics-first
+- no pay-to-win
+- preserve the identity of the product: slash -> collect -> upgrade -> squad -> match -> season
+
+# GOAL
+
+Take the current codebase and make it ready for:
+- post-alpha iteration
+- real beta / soft launch
+- monetization activation readiness
+- app-store submission preparation
+- production v1 release candidate evaluation
+
+This phase should focus on:
+1. post-alpha balancing and usability improvements
+2. monetization activation readiness
+3. store-release plumbing
+4. push/engagement readiness
+5. release-candidate QA, docs, and operational safety
+
+# PART 1 — POST-ALPHA PRODUCT AUDIT
+
+Before making changes, audit the current product against what matters most for launch.
+
+Review these areas:
+- first-session completion
+- onboarding drop-off
+- slash run enjoyment and repeatability
+- hazard frustration vs excitement
+- squad upgrade clarity
+- match fairness clarity
+- highlight engagement
+- league table excitement
+- season progression clarity
+- shop attractiveness
+- pass attractiveness
+- sync reliability
+- error/crash risk
+- economy pacing
+- fairness of monetization
+
+Create or update an internal audit doc that summarizes:
+- launch strengths
+- likely retention risks
+- likely economy risks
+- likely monetization risks
+- likely store/submission risks
+- recommended fixes applied in this pass
+
+If live tester data exists in the codebase/docs, use it.
+If real user data is not yet available, create a structured assumptions-based audit and make the app ready to ingest that data cleanly.
+
+# PART 2 — FTUE / RETENTION / CLARITY IMPROVEMENTS
+
+Refine the first-time and early-return experience.
+
+## 2A. Tighten the first session
+Improve the first session so users reach these moments quickly and clearly:
+- first slash run
+- first satisfying reward reveal
+- first upgrade or unlock
+- first lineup/tactics interaction
+- first simulated match
+- first highlight payoff
+- first league-table consequence
+- first clear “come back later” retention hook
+
+Reduce confusion and dead time.
+
+## 2B. Improve message hierarchy
+Make the home/dashboard flow even clearer:
+- strongest next best action
+- why it matters
+- what the user is working toward
+- what reward is available now
+- what they should come back for later
+
+## 2C. Fairness and understanding
+Improve how the app explains:
+- why a hazard mattered
+- why a match was won/lost
+- why a player upgrade helped
+- why the season table moved
+
+Keep this concise, elegant, and rule-based. No bloated explanation walls.
+
+# PART 3 — ECONOMY AND BALANCE TUNING
+
+Do a structured tuning pass on progression and fairness.
+
+## 3A. Review and tune:
+- slash reward output
+- combo reward scaling
+- hazard punishment
+- shard drop pacing
+- trait fragment pacing
+- catalyst pacing
+- duplicate salvage outcomes
+- coin sinks
+- gem economy structure
+- season pass reward pacing
+- shop pricing cohesion
+- early upgrade pacing
+- season reward pacing
+
+## 3B. Add economy review outputs
+Create or improve internal balancing outputs showing:
+- average rewards per slash run
+- average coins earned/spent
+- shard acquisition pace by role
+- duplicate frequency
+- upgrade pace in first 1, 3, and 7 days
+- gem pressure / cosmetic purchase readiness
+- pass reward attractiveness
+- inflation / dead-end risk
+
+## 3C. Preserve fairness
+Review every monetized or premium-facing system and ensure:
+- no power is sold unfairly
+- no progression is secretly monetized through premium rewards
+- no pass rewards break the cosmetics-first rule
+- monetization does not distort league fairness
+
+Create or update an internal fairness review doc.
+
+# PART 4 — MONETIZATION ACTIVATION READINESS
+
+The monetization structure exists. Now prepare it for real activation.
+
+## 4A. Purchase architecture
+Create a clean, portable purchase service abstraction.
+
+Requirements:
+- no hardcoding billing logic into UI
+- product/catalog model remains separate
+- support both placeholder mode and real store purchase mode
+- prepare for Apple/Google in-app purchase adapters later
+- support entitlement restoration conceptually
+- safe handling of purchase success / failure / cancel / restore flows
+
+Do not tightly couple business logic to a single vendor SDK.
+
+## 4B. Entitlement model
+Create a clear entitlement system for:
+- owned cosmetics
+- equipped cosmetics
+- premium season pass access
+- bundle ownership
+- future founder pack / starter pack ownership
+
+## 4C. Restore / purchase status UX
+Add or improve:
+- restore purchases placeholder/action
+- purchase pending/failure states
+- already-owned product messaging
+- premium pass entitlement messaging
+- account/sync reassurance around owned content
+
+## 4D. Launch catalog readiness
+Make the cosmetic and pass catalog feel launch-ready:
+- better grouping
+- rarity presentation
+- collection progress where useful
+- featured items / featured bundle presentation
+- “coming soon” support for limited events
+- clean product metadata structure
+
+# PART 5 — PUSH / RE-ENGAGEMENT ACTIVATION READINESS
+
+The reminder infrastructure exists. Prepare it for real push use.
+
+## 5A. Notification abstraction
+Refine the notification service abstraction so it is ready for real delivery later.
+
+Support triggers for:
+- tickets full
+- next matchday available
+- season ending soon
+- daily objective refresh
+- pass rewards claimable
+- cosmetic event live
+- squad upgrade available
+- rank dropped in standings
+
+## 5B. In-app vs push coherence
+Make sure reminder bar, banners, and future push triggers share the same event logic so the experience feels consistent.
+
+## 5C. Notification settings
+Add a lightweight settings surface or placeholder structure for:
+- gameplay reminders
+- season reminders
+- shop/pass reminders
+- optional marketing reminders placeholder
+
+# PART 6 — BETA / SOFT LAUNCH / STORE SUBMISSION READINESS
+
+Prepare the app and project for a real beta / soft launch workflow.
+
+## 6A. Beta readiness docs
+Add or update:
+- beta test checklist
+- soft launch checklist
+- build verification checklist
+- monetization QA checklist
+- analytics QA checklist
+- sync/account QA checklist
+- notification QA checklist
+
+## 6B. Store metadata package
+Create/update docs/placeholders for:
+- app name and subtitle
+- short description
+- long description
+- promotional copy
+- keyword ideas
+- screenshot plan
+- video trailer placeholder plan
+- review notes template
+- release notes template
+- support/contact info placeholder
+- privacy policy placeholder
+- terms placeholder
+- age/content guidance notes
+
+## 6C. Build channel / environment clarity
+Ensure the app clearly supports:
+- dev
+- alpha
+- beta
+- release candidate
+- production
+
+Make environment/build info visible in debug/settings.
+
+# PART 7 — RELEASE-CANDIDATE QA HARDENING
+
+Do a serious cleanup and hardening pass.
+
+## 7A. Edge-case handling
+Verify or improve handling for:
+- interrupted slash runs
+- duplicate reward claims
+- offline then reconnect during reward/state changes
+- season rollover edge cases
+- pass entitlement edge cases
+- owned cosmetic equip edge cases
+- migration/version mismatch edge cases
+- replay payload missing/corrupt edge cases
+
+## 7B. Defensive programming
+Improve:
+- validation
+- fallback states
+- loading states
+- empty states
+- retry flows
+- error surfacing without scaring normal users
+
+## 7C. Cleanup
+- remove stale/debug code where safe
+- clean warnings
+- tighten typings
+- improve architecture comments
+- make admin/dev gating airtight
+
+# PART 8 — PERFORMANCE AND USER EXPERIENCE POLISH
+
+Refine the app so it feels like a real release candidate.
+
+Focus on:
+- startup time
+- slash performance
+- highlight playback smoothness
+- animation quality
+- touch responsiveness
+- shop/pass responsiveness
+- reward reveal polish
+- overall premium feel
+
+Do not overhaul the identity. Polish what already works.
+
+# PART 9 — GO / NO-GO READINESS
+
+Create or update a clear release-candidate decision framework.
+
+Include:
+- minimum retention targets
+- maximum acceptable error/crash/sync-failure thresholds
+- economy/fairness acceptance thresholds
+- monetization readiness thresholds
+- UX clarity thresholds
+- QA signoff checklist
+- go / no-go checklist for:
+  - external beta
+  - soft launch
+  - public v1
+
+# PART 10 — WHAT NOT TO DO
+
+Do not:
+- add real-time multiplayer
+- add new major gameplay systems
+- add pay-to-win mechanics
+- turn monetization predatory
+- regress the core gameplay loop
+- hard-lock the app to Replit-specific services or assumptions
+
+# DEFINITION OF DONE
+
+This phase is done when:
+- the app is balanced and clearer after post-alpha review
+- monetization is activation-ready structurally
+- purchase/entitlement flows are architecturally sound
+- re-engagement systems are launch-ready
+- store/beta/soft-launch docs are in good shape
+- release-candidate QA hardening is strong
+- the product is genuinely close to a real soft launch / v1 release decision
