@@ -10,7 +10,7 @@ import {
 } from "@/lib/league";
 import { simulateMatch, nextOpponent } from "@/lib/matchSim";
 import { createInitialState, defaultTuning, makePlayer, TRAIT_LIST } from "@/lib/seedData";
-import { objectStorage, sync } from "@/services";
+import { analytics, objectStorage, sync } from "@/services";
 import type {
   GameState,
   MatchResult,
@@ -157,6 +157,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const reset = useCallback(async () => {
     const fresh = createInitialState();
     await sync.clearAll();
+    // Re-establish a fresh user/sync identity so subsequent pushes have a
+    // userId again. clearAll() sets internal userId to null; loadInitial()
+    // re-runs auth.getOrCreateUserId().
+    await sync.loadInitial();
     setState(fresh);
     await sync.push(fresh);
   }, []);
@@ -172,6 +176,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
+    if (ok) analytics.track("slash_run_started");
     return ok;
   }, []);
 
@@ -337,6 +342,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
         return next;
       });
+      const scoreBand =
+        runScore < 500 ? "low" : runScore < 1500 ? "mid" : runScore < 3000 ? "high" : "elite";
+      analytics.track("slash_run_completed", { runScore, peakCombo, scoreBand });
+      analytics.track("slash_run_score", { runScore, scoreBand });
+      analytics.track("slash_reward_claimed", {
+        coins: reward.coins,
+        essence: reward.essence,
+        shards: reward.shards,
+        injuries: reward.injuries,
+      });
+      if (createdPlayer) {
+        analytics.track("player_unlocked", {
+          rarity: (createdPlayer as Player).rarity,
+          rating: (createdPlayer as Player).rating,
+          role: (createdPlayer as Player).role,
+        });
+      }
       return { newPlayer: createdPlayer, injuredPlayer, moraleDelta };
     },
     [],
@@ -344,6 +366,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const upgradePlayer = useCallback((id: string): boolean => {
     let ok = false;
+    let newRating = 0;
     setState((s) => {
       const next = clone(s);
       const p = next.players.find((pp) => pp.id === id);
@@ -357,14 +380,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const keys = ["pace", "passing", "shooting", "control", "defense", "physical"] as const;
       const k = keys[Math.floor(Math.random() * keys.length)]!;
       p.stats[k] = Math.min(99, p.stats[k] + 2);
+      newRating = p.rating;
       ok = true;
       return next;
     });
+    if (ok) analytics.track("player_upgraded", { newRating });
     return ok;
   }, []);
 
   const unlockTrait = useCallback((id: string): boolean => {
     let ok = false;
+    let traitName: string | null = null;
     setState((s) => {
       const next = clone(s);
       const p = next.players.find((pp) => pp.id === id);
@@ -375,9 +401,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       next.traitFragments -= cost;
       const t = TRAIT_LIST[Math.floor(Math.random() * TRAIT_LIST.length)]!;
       p.trait = t;
+      traitName = t;
       ok = true;
       return next;
     });
+    if (ok) analytics.track("trait_forged", { trait: traitName });
     return ok;
   }, []);
 
@@ -393,17 +421,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       lineup[slotIndex] = playerId ?? "";
       return { ...s, lineup };
     });
+    analytics.track("lineup_updated", { slotIndex, hasPlayer: !!playerId });
   }, []);
 
   const setTactics = useCallback(
     (partial: Partial<Pick<GameState, "formation" | "style" | "pressing" | "tempo">>) => {
       setState((s) => ({ ...s, ...partial }));
+      analytics.track("tactics_updated", partial as Record<string, unknown>);
     },
     [],
   );
 
   const playFixture = useCallback((): MatchResult => {
     let result: MatchResult | null = null;
+    analytics.track("match_started");
     setState((s) => {
       // Determine opponent from season schedule, fallback to upcomingOpponent
       let opponent = getOpponentForMatchday(s.season);
@@ -495,20 +526,34 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       });
       return next;
     });
+    if (result) {
+      const r = result as MatchResult;
+      const outcome =
+        r.homeScore > r.awayScore ? "win" : r.homeScore === r.awayScore ? "draw" : "loss";
+      analytics.track("match_completed", {
+        outcome,
+        homeScore: r.homeScore,
+        awayScore: r.awayScore,
+        opponent: r.opponent,
+      });
+    }
     return result!;
   }, []);
 
   const claimMission = useCallback((id: string): boolean => {
     let ok = false;
+    let reward = 0;
     setState((s) => {
       const next = clone(s);
       const m = next.dailyMissions.find((mm) => mm.id === id);
       if (!m || !m.done || m.claimed) return s;
       m.claimed = true;
       next.coins += m.reward;
+      reward = m.reward;
       ok = true;
       return next;
     });
+    if (ok) analytics.track("daily_objective_claimed", { id, reward });
     return ok;
   }, []);
 
@@ -591,6 +636,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startNewSeason = useCallback(() => {
+    analytics.track("season_reward_claimed");
     setState((s) => {
       const next = clone(s) as GameState;
       const newSeason = createSeason(next.clubName, next.tuning.leagueSize, next.season.number + 1);

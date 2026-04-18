@@ -14,11 +14,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGame } from "@/context/GameContext";
 import { useColors } from "@/hooks/useColors";
 import { sortStandings } from "@/lib/league";
+import { analytics } from "@/services";
 
 export default function LeagueScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { state, startNewSeason } = useGame();
+
+  React.useEffect(() => {
+    analytics.track("league_table_viewed");
+  }, []);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top + 8;
   const bottomPad = (Platform.OS === "web" ? 100 : insets.bottom) + 84;

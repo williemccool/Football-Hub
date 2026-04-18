@@ -12,6 +12,7 @@
  * or unconfigured, the app keeps working and queues a push for later.
  */
 
+import { analytics } from "./analytics";
 import { auth } from "./auth";
 import { cache } from "./cache";
 import { database } from "./database";
@@ -121,6 +122,11 @@ class SyncService {
           }
         } catch (e) {
           errorLogging.capture(e, { phase: "pullState" });
+          analytics.track("sync_failed", {
+            phase: "initial_pull",
+            error: e instanceof Error ? e.message : String(e),
+          });
+          analytics.track("offline_mode_used");
           // fall through to local
         }
       }
@@ -136,17 +142,26 @@ class SyncService {
       const legacy = await cache.read<GameState>(LEGACY_STATE_KEY);
       if (legacy) {
         this.setStatus("migrating");
-        await cache.write(LOCAL_STATE_KEY, legacy);
-        this.meta = {
-          ...this.meta,
-          migrationCompleted: true,
-          migrationFromLegacy: true,
-        };
-        await writeMeta(this.meta);
-        // Schedule a push so the migrated state lands on the backend.
-        this.queuePush(legacy);
-        this.setStatus(isRemoteConfigured() ? "syncing" : "online");
-        return legacy;
+        try {
+          await cache.write(LOCAL_STATE_KEY, legacy);
+          this.meta = {
+            ...this.meta,
+            migrationCompleted: true,
+            migrationFromLegacy: true,
+          };
+          await writeMeta(this.meta);
+          // Schedule a push so the migrated state lands on the backend.
+          this.queuePush(legacy);
+          analytics.track("migration_succeeded", { fromLegacy: true });
+          this.setStatus(isRemoteConfigured() ? "syncing" : "online");
+          return legacy;
+        } catch (mErr) {
+          analytics.track("migration_failed", {
+            error: mErr instanceof Error ? mErr.message : String(mErr),
+          });
+          errorLogging.capture(mErr, { phase: "legacyMigration" });
+          throw mErr;
+        }
       }
 
       // 4) Fresh user.
@@ -231,6 +246,8 @@ class SyncService {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       errorLogging.capture(e, { phase: "pushState" });
+      analytics.track("sync_failed", { phase: "push", error: msg });
+      analytics.track("offline_mode_used");
       this.setStatus("offline", msg);
       // Retry with backoff.
       setTimeout(() => this.flush(), 8000);

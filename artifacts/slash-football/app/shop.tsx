@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { analytics } from "@/services";
 
 type Tab = "kits" | "crests" | "pitch" | "celebrations";
 
@@ -52,6 +53,10 @@ export default function ShopScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>("kits");
   const top = Platform.OS === "web" ? 24 : insets.top + 12;
+
+  useEffect(() => {
+    analytics.track("shop_viewed");
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

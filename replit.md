@@ -42,8 +42,14 @@ All persistence goes through a vendor-neutral `services/` layer:
 - `services/cache.ts` — AsyncStorage helper
 - `services/haptics.ts` — wrapper around expo-haptics with throttling and a
   user pref toggle
-- `services/analytics.ts`, `services/errorLogging.ts` — no-op stubs ready to
-  swap for real providers
+- `services/analytics.ts` — portable wrapper. Persists a 50-event ring buffer
+  with `platform`, `appVersion`, `sessionCount` baseline props. Wired into
+  GameContext (slash run, player upgrade, trait, lineup, tactics, match,
+  daily objective, season), sync (migration, sync_failed, offline_mode_used),
+  and screens (app_open, league_table_viewed, shop_viewed, settings_viewed,
+  onboarding_*). Swap the binding for PostHog/Amplitude.
+- `services/errorLogging.ts` — portable wrapper with sensitive-key scrubbing
+  and a 30-error ring buffer. Swap the binding for Sentry/Bugsnag.
 - `services/remote.ts` — REST transport. Reads `EXPO_PUBLIC_API_URL`. When
   unset, the app runs **local-only** with AsyncStorage; sync queues a push for
   whenever a backend is configured. This keeps the architecture portable.
@@ -52,8 +58,10 @@ Storage keys (AsyncStorage): `slashfootball.canonical.v1`,
 `slashfootball.syncMeta.v1`, `slashfootball.userId.v1`,
 `slashfootball.pendingPush.v1`, `slashfootball.replayIndex.v1`,
 `slashfootball.replay.<key>`, `slashfootball.salvagePref.v1`,
-`slashfootball.hapticsEnabled.v1`. Legacy migration source is
-`slashfootball.state.v2`.
+`slashfootball.hapticsEnabled.v1`, `slashfootball.account.v1`,
+`slashfootball.onboardingCompleted.v1`, `slashfootball.analytics.session.v1`,
+`slashfootball.analytics.buffer.v1`, `slashfootball.errorLog.buffer.v1`.
+Legacy migration source is `slashfootball.state.v2`.
 
 UI surface added on top of core gameplay:
 
@@ -64,6 +72,27 @@ UI surface added on top of core gameplay:
   monetization yet
 - `app/debug.tsx` — sync inspector (status, version, pending pushes, etc.)
 - `app/admin.tsx` — hidden tuning, accessed by tapping the club crest 5×
+- `app/settings.tsx` — preferences (haptics), account info, sync status,
+  privacy/terms/support links, version, reset progress (confirmed)
+- `app/onboarding.tsx` — five-step first-time user flow with skip; gated
+  by `slashfootball.onboardingCompleted.v1` and triggered from the Hub
+
+## v1 release docs
+
+`artifacts/slash-football/docs/`:
+- `ARCHITECTURE.md` — workspace layout, service contracts, sync flow
+- `ENVIRONMENT.md` — env vars for client + server
+- `RELEASE_CHECKLIST.md` — pre-flight checklist for alpha / beta / prod
+- `SMOKE_TESTS.md` — 12-section device QA checklist
+- `templates/release_notes_template.md` — changelog template
+
+## Account / identity layer
+
+`services/auth.ts` exports `AccountInfo` and exposes `getOrCreateUserId`,
+`getAccount`, `linkEmail`, `linkProvider`, `clear`. Default impl is a
+guest account; the `linkEmail`/`linkProvider` stubs flip the account kind
+locally so the upgrade UI can be written today and wired to a real backend
+endpoint later without changing call sites.
 
 ## Key Commands
 

@@ -16,6 +16,8 @@ import { HudPill } from "@/components/HudPill";
 import { useColors } from "@/hooks/useColors";
 import { useGame } from "@/context/GameContext";
 import { getOpponentForMatchday } from "@/lib/league";
+import { cache } from "@/services";
+import { ONBOARDING_KEY } from "@/constants/storageKeys";
 
 function formatMs(ms: number) {
   if (ms <= 0) return "Ready";
@@ -33,6 +35,13 @@ export default function HubScreen() {
   useEffect(() => {
     const i = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(i);
+  }, []);
+
+  // First-time user gate: redirect into the onboarding flow once.
+  useEffect(() => {
+    cache.read<boolean>(ONBOARDING_KEY).then((done) => {
+      if (!done) router.replace("/onboarding");
+    });
   }, []);
 
   const ticketCountdown = formatMs(msUntilNextTicket());
@@ -75,6 +84,17 @@ export default function HubScreen() {
           </View>
           <View style={styles.hudRow}>
             <HudPill icon="dollar-sign" value={state.coins} color={colors.accent} />
+            <Pressable
+              onPress={() => router.push("/settings")}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                marginLeft: 8,
+                padding: 6,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Feather name="settings" size={18} color={colors.mutedForeground} />
+            </Pressable>
           </View>
         </View>
 

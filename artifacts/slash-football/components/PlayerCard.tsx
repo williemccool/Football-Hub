@@ -13,7 +13,7 @@ const RARITY_COLOR: Record<Player["rarity"], string> = {
   Legendary: "#FF8A3D",
 };
 
-export function PlayerCard({
+function PlayerCardImpl({
   player,
   onPress,
   highlight,
@@ -101,6 +101,35 @@ export function PlayerCard({
     </Pressable>
   );
 }
+
+/**
+ * Memoized to avoid re-rendering long player lists when unrelated GameContext
+ * fields change (coins, tickets, etc). Equality compares player rev fields
+ * that actually affect the card.
+ */
+export const PlayerCard = React.memo(PlayerCardImpl, (a, b) => {
+  if (a.highlight !== b.highlight || a.compact !== b.compact) return false;
+  // onPress is intentionally NOT compared: parents commonly pass inline
+  // arrows that capture player.id, so identity-equality on player.id below
+  // already guarantees the closure points at the correct action.
+  const p1 = a.player;
+  const p2 = b.player;
+  return (
+    p1.id === p2.id &&
+    p1.rating === p2.rating &&
+    p1.shards === p2.shards &&
+    p1.shardsToNext === p2.shardsToNext &&
+    p1.trait === p2.trait &&
+    p1.rarity === p2.rarity &&
+    p1.name === p2.name &&
+    p1.nationality === p2.nationality &&
+    p1.archetype === p2.archetype &&
+    p1.stats.pace === p2.stats.pace &&
+    p1.stats.shooting === p2.stats.shooting &&
+    p1.stats.passing === p2.stats.passing &&
+    p1.stats.defense === p2.stats.defense
+  );
+});
 
 function Stat({
   label,

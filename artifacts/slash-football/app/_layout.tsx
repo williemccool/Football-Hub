@@ -17,6 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SplashGate } from "@/components/SplashGate";
 import { GameProvider } from "@/context/GameContext";
+import { analytics } from "@/services";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -63,6 +64,14 @@ function RootLayoutNav() {
         name="admin"
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />
+      <Stack.Screen
+        name="settings"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
+      <Stack.Screen
+        name="onboarding"
+        options={{ presentation: "fullScreenModal", animation: "fade" }}
+      />
     </Stack>
   );
 }
@@ -80,6 +89,10 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    analytics.track("app_open");
+  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 
