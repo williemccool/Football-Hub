@@ -41,7 +41,16 @@ Recorded as of the v1 / beta-readiness pass.
 | App-store metadata + review notes placeholders | 🔴 → ✅ | `docs/APP_STORE_METADATA.md`, `docs/REVIEW_NOTES_TEMPLATE.md`, `docs/PRIVACY_PLACEHOLDER.md` |
 
 ## Remaining (post-launch, not blocking soft launch)
-- Real IAP adapter (StoreKit / Play Billing) — wires into `cosmetic_purchase_attempted` once a price has `currency: "real"`.
-- Real push delivery adapter — `notifications.subscribeOutgoing` already exposes the contract; just needs an APNs/FCM/OneSignal subscriber.
-- Replays surface (`objectStorage.putReplay` already persists; UI surface intentionally deferred).
+- Real IAP adapter — **shell shipped** as `services/storeAdapter.ts`. A
+  native StoreKit / Play Billing module just needs to be passed to
+  `storeAdapter.setBillingBackend(...)` and then
+  `purchases.setAdapter(storeAdapter)`. No gameplay code change needed.
+- Real push delivery adapter — **shell shipped** as `services/pushAdapter.ts`.
+  Subscribes to `notifications.subscribeOutgoing` already; native APNs/FCM
+  module is passed via `pushAdapter.setBackend(...)` then `pushAdapter.start()`.
+- Replays surface — **shipped** as `app/replays.tsx`. Reachable from
+  Settings → "Match replays" and from the Debug screen.
 - Localisation pass for first launch markets.
+- Email/social account upgrade — `auth.linkEmail` / `linkProvider` are
+  still cache-only stubs; backend migration of the guest record is the
+  remaining work.

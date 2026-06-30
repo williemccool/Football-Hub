@@ -33,6 +33,7 @@ app/                   expo-router screens
   settings.tsx         Preferences, account, support
   onboarding.tsx       First-time user flow
   debug.tsx            Sync + diagnostics
+  replays.tsx          Cached match replay viewer
   admin.tsx            Live-ops tuning (hidden — tap club crest 5x)
 
 components/            Reusable UI (PlayerCard, SplashGate, SalvagePicker, …)
@@ -53,7 +54,9 @@ All gameplay code depends only on these abstractions:
 | `analytics`    | PortableAnalytics         | Event ring buffer, swap for PostHog/Amplitude        |
 | `errorLogging` | PortableErrorLogger       | Scrubbed error ring buffer, swap for Sentry/Bugsnag  |
 | `haptics`      | expo-haptics wrapper      | Throttled, tier-aware feedback                       |
-| `sync`         | SyncService               | Orchestrates pull / push / migration / conflict      |
+| `sync`         | SyncService               | Orchestrates pull / push / migration / conflict (exponential backoff with jitter) |
+| `purchases`    | PlaceholderAdapter / `storeAdapter` | Vendor-neutral IAP — swap adapter via `purchases.setAdapter()` |
+| `pushAdapter`  | shell (no backend)        | Forwards `notifications.subscribeOutgoing` to APNs/FCM via a pluggable `PushBackend` |
 
 To migrate vendors, replace the concrete adapter and keep the interface.
 

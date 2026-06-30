@@ -49,6 +49,12 @@ async function writeMeta(m: SyncMeta) {
 
 type Listener = (s: SyncSnapshot) => void;
 
+// Exponential backoff bounds for failed pushes. We start small so transient
+// blips recover quickly and cap at a minute so a long offline window doesn't
+// hammer the device or the backend on reconnect.
+const RETRY_MIN_MS = 2_000;
+const RETRY_MAX_MS = 60_000;
+
 class SyncService {
   private status: SyncStatus = "idle";
   private userId: string | null = null;
@@ -56,6 +62,8 @@ class SyncService {
   private lastError: string | null = null;
   private pendingState: GameState | null = null;
   private pushTimer: ReturnType<typeof setTimeout> | null = null;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private retryAttempt = 0;
   private inFlight = false;
   private listeners = new Set<Listener>();
   private serverState: GameState | null = null;
@@ -242,21 +250,45 @@ class SyncService {
       }
       this.meta.lastSyncAt = Date.now();
       await writeMeta(this.meta);
+      this.retryAttempt = 0;
       this.setStatus("online");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       errorLogging.capture(e, { phase: "pushState" });
-      analytics.track("sync_failed", { phase: "push", error: msg });
+      analytics.track("sync_failed", {
+        phase: "push",
+        error: msg,
+        attempt: this.retryAttempt + 1,
+      });
       analytics.track("offline_mode_used");
       this.setStatus("offline", msg);
-      // Retry with backoff.
-      setTimeout(() => this.flush(), 8000);
+      // Exponential backoff with jitter, capped. Each consecutive failure
+      // doubles the wait so a long outage doesn't hammer the backend on
+      // recovery, but the first retry is still snappy.
+      this.retryAttempt = Math.min(this.retryAttempt + 1, 8);
+      const base = Math.min(
+        RETRY_MAX_MS,
+        RETRY_MIN_MS * 2 ** (this.retryAttempt - 1),
+      );
+      const jitter = Math.floor(Math.random() * Math.min(1_000, base / 4));
+      const delay = base + jitter;
+      if (this.retryTimer) clearTimeout(this.retryTimer);
+      this.retryTimer = setTimeout(() => this.flush(), delay);
     } finally {
       this.inFlight = false;
     }
   }
 
   async clearAll(): Promise<void> {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    if (this.pushTimer) {
+      clearTimeout(this.pushTimer);
+      this.pushTimer = null;
+    }
+    this.retryAttempt = 0;
     await cache.remove(LOCAL_STATE_KEY);
     await cache.remove(LEGACY_STATE_KEY);
     await cache.remove(META_KEY);

@@ -34,6 +34,16 @@ export {
   type PurchaseResult,
   type PurchaseStatus,
 } from "./purchases";
+export {
+  storeAdapter,
+  type BillingBackend,
+  type BillingPurchaseResult,
+} from "./storeAdapter";
+export {
+  pushAdapter,
+  type PushBackend,
+  type PushPermissionStatus,
+} from "./pushAdapter";
 export type {
   AuthService,
   DatabaseService,

@@ -264,6 +264,18 @@ export default function SettingsScreen() {
           <Row label="Environment" value={build.environment} />
           <Row label="Platform" value={build.platform} />
           <Pressable
+            onPress={() => router.push("/replays")}
+            style={({ pressed }) => [
+              styles.actionRow,
+              { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Feather name="film" size={14} color={colors.foreground} />
+            <Text style={[styles.actionText, { color: colors.foreground }]}>
+              Match replays
+            </Text>
+          </Pressable>
+          <Pressable
             onPress={() => router.push("/debug")}
             style={({ pressed }) => [
               styles.actionRow,

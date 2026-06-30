@@ -79,6 +79,17 @@ export default function DebugScreen() {
         </Section>
 
         <Pressable
+          onPress={() => router.push("/replays")}
+          style={({ pressed }) => [
+            styles.btn,
+            { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <Feather name="film" size={14} color={colors.foreground} />
+          <Text style={[styles.btnText, { color: colors.foreground }]}>Open replays</Text>
+        </Pressable>
+
+        <Pressable
           onPress={refresh}
           style={({ pressed }) => [
             styles.btn,

@@ -68,11 +68,9 @@ export type AnalyticsEvent =
   | "purchases_restore_failed"
   | "notification_pref_changed"
   | "notification_settings_viewed"
-  // Funnel + content events
-  | "club_created"
-  | "shop_viewed"
-  | "highlight_view_started"
-  | "highlight_view_completed";
+  // Replays archive
+  | "replays_viewed"
+  | "replay_opened";
 
 const SESSION_KEY = "slashfootball.analytics.session.v1";
 const BUFFER_KEY = "slashfootball.analytics.buffer.v1";
